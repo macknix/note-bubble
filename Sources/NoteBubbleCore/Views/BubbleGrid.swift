@@ -108,20 +108,24 @@ struct BubbleGrid: View {
         }
     }
 
+    /// An empty level says what's missing and how to fix it, and nothing else.
+    ///
+    /// It used to also list "click to open · hold to pop · drag to rearrange",
+    /// which describes things you do *to* bubbles — useless advice on a screen
+    /// with no bubbles on it.
     private var emptyState: some View {
-        VStack(spacing: 7) {
-            Image(systemName: "square.grid.2x2")
-                .font(.system(size: 24, weight: .light))
-            Text(store.isAtRoot ? "Double-click to add a bubble" : "No sub-bubbles yet")
-                .font(.system(size: 11, weight: .medium))
-            VStack(spacing: 2) {
-                Text("Click to open · hold to pop · drag to rearrange")
-                Text("⏎ finishes a note")
-            }
-            .font(.system(size: 9))
-            .opacity(0.75)
+        VStack(spacing: 8) {
+            Image(systemName: "circle.dashed")
+                .font(.system(size: 26, weight: .light))
+
+            Text(store.isAtRoot ? "No bubbles yet" : "No sub-bubbles yet")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+
+            Text("Click + or press ⌘N to add one")
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .opacity(0.75)
         }
-        .foregroundStyle(.secondary.opacity(0.6))
+        .foregroundStyle(.secondary.opacity(0.65))
         .allowsHitTesting(false)
     }
 
