@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build
+
+      # Not `swift test`: XCTest and swift-testing ship with Xcode, and this
+      # project builds with the Command Line Tools toolchain alone. The suite is an
+      # executable that exits non-zero on failure. See CLAUDE.md.
+      - name: Test
+        run: swift run NoteBubbleTests
+
+      - name: Assemble the app bundle
+        run: ./Scripts/build-app.sh
+
+      - name: Check the bundle came out whole
+        run: |
+          APP="build/Note Bubble.app"
+          test -x "$APP/Contents/MacOS/NoteBubble"
+          test -f "$APP/Contents/Info.plist"
+          test -f "$APP/Contents/Resources/AppIcon.icns"
+          test -d "$APP/Contents/Resources/Sounds"
+          plutil -lint "$APP/Contents/Info.plist"
+          echo "bundle OK"

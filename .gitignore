@@ -1,0 +1,16 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Assembled .app bundle — rebuilt by Scripts/build-app.sh
+build/
+
+# macOS
+.DS_Store
+
+# Local Claude Code permissions, not shared
+.claude/settings.local.json
+
+# An unrelated clone of the agent-skills repo that lands here when a skill is
+# installed from this directory. Not part of Note Bubble.
+skills/

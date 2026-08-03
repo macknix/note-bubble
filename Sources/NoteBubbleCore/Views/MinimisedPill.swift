@@ -1,0 +1,72 @@
+import SwiftUI
+
+/// Collapsed state: a small pill showing what's gone red, click to expand.
+struct MinimisedPill: View {
+    @ObservedObject var store: BubbleStore
+    let onExpand: () -> Void
+    let onHoverChange: (Bool) -> Void
+
+    @State private var hovering = false
+
+    private var overdue: Int { store.overdueCount }
+    private var total: Int { store.root.flattened.count }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            badge
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text(overdue > 0 ? "overdue" : "bubbles")
+                    .font(.system(size: 10, weight: .semibold))
+                Text(overdue > 0 ? "\(total) total" : "all fresh")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+            }
+
+            Image(systemName: "chevron.up.circle.fill")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .opacity(hovering ? 1 : 0.45)
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        // Decorative only: hits must fall through to the drag area behind.
+        .background(
+            Capsule()
+                .fill(.regularMaterial)
+                .overlay(Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 1))
+                .shadow(color: .black.opacity(0.22), radius: 9, y: 3)
+                .allowsHitTesting(false)
+        )
+        .scaleEffect(hovering ? 1.04 : 1)
+        .onHover { hovering = $0; onHoverChange($0) }
+        .animation(.easeOut(duration: 0.14), value: hovering)
+        .onTapGesture(perform: onExpand)
+        .background(WindowDragArea())
+        .contextMenu {
+            Button("Open") { onExpand() }
+            Divider()
+            Button("Quit Note Bubble") { NSApp.terminate(nil) }
+        }
+        .help("Click to open Note Bubble · drag to move")
+    }
+
+    /// Rounded square rather than a circle, matching the tiles it stands in for.
+    private var badge: some View {
+        let days: Double = overdue > 0 ? 99 : 0
+        return ZStack {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Aging.color(forDays: days), Aging.shadeColor(forDays: days)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 24, height: 24)
+            Text("\(overdue > 0 ? overdue : total)")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(.white)
+        }
+    }
+}
