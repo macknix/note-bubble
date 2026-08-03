@@ -16,15 +16,21 @@ struct GlassIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 11.5, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(tint ?? .primary.opacity(0.72))
-                .frame(width: 26, height: 26)
+                .frame(width: 28, height: 28)
                 .background {
                     Circle()
                         .fill(.white.opacity(hovering ? 0.20 : 0.08))
                         .overlay(Circle().strokeBorder(.white.opacity(hovering ? 0.3 : 0.12), lineWidth: 0.5))
                         .allowsHitTesting(false)
                 }
+                // Without this the only clickable region is the glyph's own strokes.
+                // `.frame` is a layout container and adds no hit area, and the
+                // circle behind it is deliberately transparent to hits so drags
+                // pass through the bar — which left a thin icon like `chevron.left`
+                // needing several attempts to hit.
+                .contentShape(Circle())
                 .scaleEffect(hovering ? 1.1 : 1)
         }
         .buttonStyle(CandyPress())
@@ -85,6 +91,8 @@ struct CandyOrb: View {
                         .opacity(bloom ? 0 : 1)
                         .allowsHitTesting(false)
                 }
+                // The whole orb is the target, not just the glyph — see GlassIconButton.
+                .contentShape(Circle())
                 .shadow(color: BarStyle.candyPink.opacity(hovering ? 0.55 : 0.35),
                         radius: hovering ? 10 : 6, y: 2)
                 .scaleEffect(hovering ? 1.09 : 1)

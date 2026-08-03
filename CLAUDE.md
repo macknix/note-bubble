@@ -120,6 +120,17 @@ metrics), which is what keeps them testable without a running app.
 
 ## Architecture
 
+### Bar controls need an explicit `contentShape`
+
+Every button in the bar draws its glyph inside a `.frame`, over a circle that is
+`.allowsHitTesting(false)` so drags pass through the bar chrome. Neither of those
+contributes hit area — a `.frame` is only a layout container — so without an
+explicit `.contentShape(Circle())` the *only* clickable region is the glyph's own
+strokes. `chevron.left` at 12pt is about 7×12pt of thin lines, which took several
+attempts to hit; chunky glyphs like `xmark` masked the problem.
+
+If you add a control here, give it a `contentShape`.
+
 ### The bar must never overflow its width
 
 The panel is 432pt, leaving ~398pt inside the bar. Controls have hard minimum
