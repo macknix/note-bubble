@@ -10,6 +10,10 @@ struct RootView: View {
     let onTogglePin: () -> Void
     let drag: PanelDrag
 
+    /// Whether the pointer is actually over the panel, as distinct from whether a
+    /// note is being edited. Conflating the two is what made Return minimise it.
+    @State private var isHovering = false
+
     var body: some View {
         VStack(spacing: 0) {
             GlassBar(
@@ -24,9 +28,19 @@ struct RootView: View {
         // No background behind the grid: the tiles float directly over whatever you
         // are working on. Only the bar is a surface.
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .onHover(perform: onHoverChange)
-        // Starting or finishing a note re-evaluates the fade, so the panel cannot
-        // dim while you are mid-sentence with the pointer parked elsewhere.
-        .onChange(of: store.editingID) { _, _ in onHoverChange(store.editingID != nil) }
+        .onHover { hovering in
+            isHovering = hovering
+            onHoverChange(hovering || store.editingID != nil)
+        }
+        // Starting or finishing a note re-evaluates the panel's state so it cannot
+        // dim mid-sentence with the pointer parked elsewhere.
+        //
+        // It reports `isHovering`, not `false`. Reporting a bare `false` when
+        // editing ended told the panel the pointer had left, which scheduled a
+        // collapse — so pressing Return to finish a note minimised the window a
+        // moment later even though the pointer was sitting right on it.
+        .onChange(of: store.editingID) { _, editing in
+            onHoverChange(isHovering || editing != nil)
+        }
     }
 }

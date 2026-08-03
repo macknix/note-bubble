@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// The panel's top bar: one glass slab carrying status, place, and controls.
+/// The panel's top bar: status and controls, with the trail of nested bubbles on
+/// its own row underneath when you're inside one.
 ///
-/// Replaces a stacked grip-strip-plus-header, which spent 72pt of vertical space
-/// and gave the drag handle nothing to say. One row reads as a single object,
-/// which is what the glass wants to be.
+/// The second row is not decoration. With the breadcrumb and back button inline,
+/// the bar wanted ~500pt of a 398pt budget once you drilled in, and the overflow
+/// pushed the rightmost controls outside the panel's clip bounds where they could
+/// not be clicked at all. Giving the trail its own full-width row removes the
+/// competition entirely — and makes the breadcrumb readable instead of a stub.
 struct GlassBar: View {
     @ObservedObject var store: BubbleStore
     @ObservedObject private var sounds = PopSounds.shared
@@ -18,17 +21,22 @@ struct GlassBar: View {
     @State private var shuffleSpin: Double = 0
 
     var body: some View {
+        VStack(spacing: 6) {
+            controlRow
+            if !store.isAtRoot { trailRow }
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+        .animation(Motion.lift, value: store.isAtRoot)
+    }
+
+    // MARK: - Rows
+
+    private var controlRow: some View {
         HStack(spacing: 8) {
             StatusHandle(counts: store.stageCounts, drag: drag)
-
-            if !store.isAtRoot {
-                GlassIconButton(systemImage: "chevron.left", help: "Back", action: store.goUp)
-            }
-
-            breadcrumb
-
             Spacer(minLength: 6)
-
             controls
         }
         .padding(.horizontal, 9)
@@ -40,9 +48,22 @@ struct GlassBar: View {
                 .contentShape(RoundedRectangle(cornerRadius: 23, style: .continuous))
                 .panelDraggable(drag, isDragging: $isDragging)
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+    }
+
+    private var trailRow: some View {
+        HStack(spacing: 6) {
+            GlassIconButton(systemImage: "chevron.left", help: "Back", action: store.goUp)
+            breadcrumb
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background {
+            BarStyle.glass(cornerRadius: 17)
+                .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+                .panelDraggable(drag, isDragging: $isDragging)
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
     }
 
     private var controls: some View {
@@ -52,7 +73,7 @@ struct GlassBar: View {
             if store.canUndo {
                 GlassIconButton(
                     systemImage: "arrow.uturn.backward",
-                    help: store.undoLabel.map { "Undo popping “\($0)” (⌘Z)" } ?? "Undo (⌘Z)",
+                    help: store.undoLabel.map { "Undo “\($0)” (⌘Z)" } ?? "Undo (⌘Z)",
                     action: store.undo
                 )
                 .transition(.scale.combined(with: .opacity))
@@ -85,15 +106,11 @@ struct GlassBar: View {
 
             CandyOrb(systemImage: "plus", help: "New bubble (⌘N)") { store.addBubble() }
         }
+        // Controls hold their size; anything flexible yields to them. This is what
+        // stops a long note title ever squeezing a button out of reach again.
+        .layoutPriority(1)
         .animation(Motion.lift, value: store.canUndo)
         .animation(Motion.lift, value: store.visible.count > 1)
-    }
-
-    /// Jumbles the board and spins the icon with it. The tiles re-pack under
-    /// `Motion.reflow`, so the rearrangement plays out rather than snapping.
-    private func shuffle() {
-        withAnimation(Motion.reflow) { store.shuffle() }
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.55)) { shuffleSpin += 360 }
     }
 
     private var breadcrumb: some View {
@@ -117,6 +134,13 @@ struct GlassBar: View {
         // and a soap-bubble subject, rather than the default system face.
         .font(.system(size: 11.5, weight: .semibold, design: .rounded))
         .foregroundStyle(.primary.opacity(0.75))
-        .frame(maxWidth: 150, alignment: .leading)
+        .layoutPriority(-1)
+    }
+
+    /// Jumbles the board and spins the icon with it. The tiles re-pack under
+    /// `Motion.reflow`, so the rearrangement plays out rather than snapping.
+    private func shuffle() {
+        withAnimation(Motion.reflow) { store.shuffle() }
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.55)) { shuffleSpin += 360 }
     }
 }

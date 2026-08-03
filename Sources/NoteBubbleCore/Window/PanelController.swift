@@ -14,6 +14,8 @@ final class PanelController: NSObject, NSWindowDelegate {
     private static let panelWidth: CGFloat = 432
     /// The glass bar plus its margins.
     private static let headerHeight: CGFloat = 58
+    /// The breadcrumb row, which only appears once you are inside a bubble.
+    private static let trailRowHeight: CGFloat = 34
     /// Enough for one row, so a nearly empty panel isn't a sliver.
     private static let minimumBodyHeight: CGFloat = 152
     /// Beyond this the grid scrolls rather than the panel swallowing the screen.
@@ -83,7 +85,8 @@ final class PanelController: NSObject, NSWindowDelegate {
         let specs = store.visible.map { TileSizeCache.spec(for: $0, in: layout) }
         let body = layout.contentHeight(for: specs)
         let clamped = min(max(body, Self.minimumBodyHeight), Self.maximumBodyHeight)
-        return NSSize(width: Self.panelWidth, height: Self.headerHeight + clamped)
+        let chrome = Self.headerHeight + (store.isAtRoot ? 0 : Self.trailRowHeight)
+        return NSSize(width: Self.panelWidth, height: chrome + clamped)
     }
 
     private func fitToContent() {

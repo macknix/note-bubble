@@ -120,6 +120,22 @@ metrics), which is what keeps them testable without a running app.
 
 ## Architecture
 
+### The bar must never overflow its width
+
+The panel is 432pt, leaving ~398pt inside the bar. Controls have hard minimum
+widths, so anything flexible has to yield to them — `controls` carries
+`.layoutPriority(1)` and the breadcrumb `.layoutPriority(-1)`.
+
+This is a fixed bug, not a precaution. With the back button and breadcrumb inline
+the bar wanted ~502pt once you drilled into a bubble, and the overflow pushed the
+rightmost controls (close, and the new-bubble orb) outside the panel's
+`clipShape` — where they rendered but could not be clicked. It only showed up when
+nested, which made it look intermittent.
+
+The breadcrumb now has its own full-width row, shown only when nested;
+`PanelController` adds `trailRowHeight` to the panel when `!store.isAtRoot`. If you
+add a control to the top row, check the budget still balances.
+
 ### The top bar's visual language
 
 `BarStyle` holds it: a deferential frosted **glass** substrate, and one saturated
@@ -404,6 +420,12 @@ Auto-collapse re-checks its preconditions *at fire time*, not when scheduled:
 pinned, `store.editingID != nil`, or `PanelState.blocksAutoCollapse` all veto it.
 `PanelState` exists because the grid knows things the window needs (a confirmation
 sheet is open, a tile is mid-drag) that have no business living on the note model.
+
+**`RootView` reports hover as `isHovering || editing`,** tracking real pointer
+presence separately from editing state. Reporting a bare `false` when editing ended
+told the panel the pointer had left, which scheduled a collapse — so pressing
+Return to finish a note minimised the window a moment later, with the pointer
+sitting right on it. Never derive hover from an editing change alone.
 
 Alpha is animated on the *window* (1.0 ⇄ `idleAlpha` 0.42), not as a view tint, so
 material, tiles and shadows fade as one.
