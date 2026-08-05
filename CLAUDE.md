@@ -43,6 +43,8 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | Label font, tile padding | `Layout/TileText.swift` (measurement depends on these) |
 | Tile corner shape | `Views/TileStyle.swift` |
 | Panel size, fade, hover open/close timing | `Window/PanelController.swift` |
+| Where the panel sits: snapping, which way it opens | `Window/PanelParking.swift`, rules in `Window/PanelPlacement.swift` |
+| The pill's size | `Views/MinimisedPill.swift` |
 | Keyboard shortcuts | `Window/OverlayPanel.swift` (⌘…) and `Window/HotKey.swift` (⌥Space) |
 | Menu bar icon and its menu | `Window/MenuBarItem.swift` |
 | What a tile looks like | `Views/BubbleTile.swift` |
@@ -58,6 +60,9 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 3. **Text is saved on every keystroke.** There is no save step to add.
 4. **Popping searches the whole tree,** not the current level.
 5. **The confirmation is drawn in-panel,** never as an `NSAlert`.
+6. **`PanelController` alone sizes the window,** and it resizes *before* swapping
+   the view in. See "The panel remembers its corner" and "Resize the window, then
+   install the view".
 
 Each is load-bearing and each has a comment at its site explaining why.
 
@@ -66,6 +71,10 @@ that file to reset, or use the demo board above rather than hand-editing dates.
 The app holds the tree in memory and writes on change, so quit it before replacing
 that file or it will overwrite you on its next save — `demo-data.py` refuses to
 install while it is running for exactly that reason.
+
+Where the panel sits is remembered separately, in `UserDefaults`:
+`defaults delete com.macknixon.notebubble PanelPlacement` puts it back in the
+top-right corner.
 
 ## Build Constraints
 
@@ -101,8 +110,9 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
   Views/                   RootView, GlassBar, BarStyle, BarButtons, StatusHandle,
                            BubbleGrid, BubbleTile, TileStyle, PopBurst,
                            ConfirmPopSheet, UndoToast, MinimisedPill, WindowDragArea
-  Window/                  OverlayPanel, PanelController, PanelState, PanelDrag,
-                           MenuBarItem, HotKey
+  Window/                  OverlayPanel, PanelController, PanelParking,
+                           PanelPlacement, PanelState, PanelDrag, MenuBarItem,
+                           HotKey
 Sources/NoteBubbleTests/   executable test suite + Harness
 Scripts/                   build-app.sh, make-icon.swift, make-pop-sounds.py,
                            demo-data.py
@@ -215,8 +225,8 @@ measurement assumes — change the padding in `BubbleTile` and you must change
 the current level, clamped between `minimumBodyHeight` and `maximumBodyHeight`
 (past which the grid scrolls). It subscribes to `store.objectWillChange` — which
 fires *before* the mutation lands, hence the hop to the next run-loop turn in
-`fitToContent` to read post-change state. Resizing anchors top-left like every
-other resize here.
+`fitToContent` to read post-change state. Resizing anchors the panel's parked
+corner like every other resize here — see "The panel remembers its corner".
 
 ### Text editing finishes on Return
 
@@ -293,9 +303,88 @@ across Spaces and sits over full-screen apps. Being borderless it also swallows
 standard shortcuts, so `keyDown` manually routes ⌘W/⌘M/⌘Q/⌘N and Escape.
 
 `PanelController` swaps the panel's `NSHostingView` between `RootView` and
-`MinimisedPill`, resizing about the **top-left** corner (AppKit frames are
-bottom-left origin, hence the y adjustment in `resize(to:)`) so collapsing doesn't
-fling the widget across the screen.
+`MinimisedPill`, resizing about the corner the panel is parked in so collapsing
+doesn't fling the widget across the screen.
+
+### The panel remembers its corner
+
+Position is deliberately not the controller's business. It is three files, in
+layers, and a change to any one of them should not need the others:
+
+| | |
+|---|---|
+| `PanelPlacement.swift` | the rules, as plain geometry over rectangles — no AppKit, no windows, so this is where they are tested |
+| `PanelParking.swift` | the wiring: `NSScreen` in, `UserDefaults` out. Owns the parked corner and answers "what frame should a panel this size take?" |
+| `PanelController` | *when* the panel changes size. It asks `parking.frame(sized:)` and never computes a position itself |
+
+`MinimisedPill.size` is the pill's window, declared next to the view that fills it.
+
+The rules layer is three ideas:
+
+1. **`PanelAnchor`** is which corner holds still when the panel changes size. The
+   pill and the expanded grid are wildly different sizes, so something has to. It
+   is resolved by comparing *gaps* to each screen edge, not the panel's centre
+   against the screen's, so the answer doesn't change with the panel's width — an
+   expanded panel flush right must still read as right-anchored.
+2. **`PanelGeometry.snapped`** pulls the panel flush when a drag brings it within
+   `snapDistance` of a screen edge. Each axis snaps independently, which is what
+   makes corners fall out of two edges. Edges shared with a second display are
+   excluded (`openEdges(of:among:)` probes just beyond each edge, at three points
+   along it since displays are rarely aligned neatly): snapping there would cement
+   the panel to the boundary with no way to drag it onto the next screen.
+3. **`PanelPlacement`** — the corner plus which corner it is — is persisted to
+   `UserDefaults`. It is specifically where the **pill** rests: the pill is the
+   resting state, so it is the thing that must never appear to move.
+
+Together these are why a widget parked top-right opens leftwards and downwards and
+folds back into that corner, and bottom-left does the mirror image.
+
+Two rules keep it from wandering, and both are fixes rather than precautions:
+
+- **Every size is measured from the parked corner, never from the current frame.**
+  `PanelParking.frame(sized:)` hangs the new size off that corner and clamps the
+  result for display only — the clamp deliberately does not feed back into the
+  placement. Re-reading the corner off a clamped frame — an expanded panel too tall
+  for the room below it gets pushed up the screen to fit — made the pill creep a
+  little further each time it opened and closed.
+- **A panel dragged by its bar parks by its top edge** (`init(draggedPanel:in:)`),
+  whatever half of the screen it lands in, because the bar is the handle and the
+  panel has to fold up towards the thing under your cursor. Resolving the nearest
+  corner here instead put the pill on the panel's *bottom* edge, hundreds of points
+  below the bar. It looked fine in the top half of the screen, where the nearest
+  corner is the top one — which is exactly why it read as "the bottom half is
+  broken". Dragging the **pill** still resolves both axes by nearest edge; that is
+  what parks it in a corner in the first place.
+
+The placement is re-read only when the panel is deliberately moved, and there is
+one method per way that can happen: `park(pill:)`, `park(draggedPanel:)` and
+`park(settledPill:)` — the last for the one case where a clamp is allowed to win,
+a corner that no longer fits on any screen.
+
+### Resize the window, then install the view
+
+`PanelController.show(_:sized:)` does both, in that order, and the order is why it
+exists as one method. Installing the view first lays it out at the size the panel
+*was*: opening from the pill, `BubbleGrid` measured 132pt of width, concluded that
+was one column, and stacked every tile vertically — then the window jumped to 432pt
+and the tiles animated out of that column into their real slots. A visible cascade
+on every single open.
+
+It read as an edge-specific bug, and was reported as one. Opening from the right of
+the screen the window's *origin* moves as well as its size, so the tiles started
+300pt right of where they belonged and travelled the whole way back; opening from
+the left the origin holds still and only the fan-out shows. Same bug, twice as
+obvious on one side. An empty board hides it completely, which is worth knowing
+when checking this by hand — use `Scripts/demo-data.py install`.
+
+**`FirstMouseHostingView` sets `sizingOptions = []`,** and that is load-bearing.
+A hosting view otherwise pushes its content's fitting size onto the window as
+`contentMinSize`/`contentMaxSize`, and AppKit clamps the frame to it about the
+top-left — which quietly shrank the pill window to its content whatever
+`MinimisedPill.size` said. A pill snapped flush right then sat 60pt inside the edge
+and crept further left on every cycle. `MinimisedPill` correspondingly fills its
+window rather than sizing itself, so "flush to the edge" means the pill is flush
+and not merely its transparent window.
 
 ### Dragging the panel, and first clicks generally
 
@@ -305,7 +394,8 @@ makes the whole bar a handle: controls layered above it take their own clicks,
 everything else falls through to the drag.
 
 It reports phases to `PanelController` via `PanelDrag`, which moves the window
-using `NSEvent.mouseLocation`.
+using `NSEvent.mouseLocation`, snapping to screen edges as it goes and adopting the
+corner it was dropped in.
 
 This deliberately does *not* use AppKit's `performDrag`. Two successive attempts
 with `WindowDragArea` failed, because that route needs the mouse-down to reach an
@@ -326,6 +416,12 @@ which have broken before:
    and shadow are decorative and carry `.allowsHitTesting(false)`; adding a plain
    `.background(.regularMaterial)` above the drag area silently swallows the drag.
    Same applies to `MinimisedPill`.
+
+`performDrag` moves the window from inside its own tracking loop, so there is no
+way to apply edge magnetism *during* a pill drag without fighting it. It is
+synchronous — it returns on mouse-up — so `DragView.mouseDown` calls
+`windowDragEnded()` afterwards and the pill snaps on release, animated. The bar
+snaps live; the pill snaps as it lands.
 
 ### Undo is snapshot-based, and only `pop` records
 
@@ -400,10 +496,13 @@ mouse buttons route through one action (`sendAction(on:)`) and the menu is
 attached only for the duration of a right-click — assigning `item.menu` outright
 would make left-click open the menu too, losing the click-to-toggle.
 
-Opening from the menu bar parks the panel under the icon via `moveBelow`, which
-positions by the panel's **top** edge because `expand` grows downward from the
-top-left. Setting the expanded origin there instead leaves the panel a full
-panel-height too low.
+Opening from the menu bar reopens the panel **where it was last left**, across a
+quit as well as a close — a widget you have parked in a particular corner should
+stay there, and being relocated on every open is the more surprising behaviour by
+far. `moveBelow` is only the fallback for when that spot has gone (a display
+unplugged since, so `parking.isOnScreen` is false), which would otherwise strand
+the panel somewhere unreachable. It parks the **pill** under the icon and lets
+`PanelParking` work out which way the panel should then open.
 
 The floating pill is optional (`ShowsFloatingPill`, default on). With it off,
 `minimise` calls `orderOut` rather than shrinking to the pill.

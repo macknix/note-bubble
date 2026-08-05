@@ -6,7 +6,15 @@ import AppKit
 struct WindowDragArea: NSViewRepresentable {
     final class DragView: NSView {
         override func mouseDown(with event: NSEvent) {
-            window?.performDrag(with: event)
+            guard let window else { return }
+            let before = window.frame
+            window.performDrag(with: event)
+            // `performDrag` runs its own tracking loop and returns on mouse-up,
+            // having moved the window itself — so this is the only moment the
+            // controller gets to snap the pill to an edge and re-read its corner.
+            // The frame it started from goes too, since a click that opened the
+            // panel comes through here as well and is not a move.
+            (window.delegate as? PanelController)?.windowDragEnded(from: before)
         }
 
         override func hitTest(_ point: NSPoint) -> NSView? {
@@ -37,6 +45,16 @@ final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
 
     @MainActor @preconcurrency required dynamic init(rootView: Content) {
         super.init(rootView: rootView)
+        // `PanelController` is the only thing allowed to size this window.
+        //
+        // By default a hosting view pushes its content's fitting size onto the
+        // window as `contentMinSize`/`contentMaxSize`, and AppKit then clamps the
+        // frame — keeping the *top-left* corner. That silently shrank the pill
+        // window to 118×40 whatever `MinimisedPill.size` said, so a pill parked
+        // flush against the right edge sat 60pt inside it and crept further left on
+        // every expand/minimise cycle. The panel's geometry is computed deliberately
+        // (see `expandedSize`); nothing else may second-guess it.
+        sizingOptions = []
     }
 
     @available(*, unavailable)

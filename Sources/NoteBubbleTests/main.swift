@@ -8,5 +8,6 @@ MainActor.assumeIsolated {
     BubbleTreeTests.run()
     AgingTests.run()
     BubbleStoreTests.run()
+    PanelPlacementTests.run()
     exit(Check.summary())
 }

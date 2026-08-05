@@ -20,7 +20,6 @@ final class PanelController: NSObject, NSWindowDelegate {
     private static let minimumBodyHeight: CGFloat = 152
     /// Beyond this the grid scrolls rather than the panel swallowing the screen.
     private static let maximumBodyHeight: CGFloat = 560
-    private static let pillSize = NSSize(width: 178, height: 46)
 
     /// Grace period before an unhovered panel folds back to the pill. Long enough
     /// to cross a gap or overshoot an edge without the panel vanishing.
@@ -43,6 +42,10 @@ final class PanelController: NSObject, NSWindowDelegate {
         didSet { UserDefaults.standard.set(showsFloatingPill, forKey: Self.pillDefaultsKey) }
     }
 
+    /// Where the panel sits and what frame it takes at any size. Everything
+    /// positional goes through it — see `PanelParking`.
+    private let parking = PanelParking()
+
     init(store: BubbleStore) {
         self.store = store
         // Defaults to on so nothing disappears for anyone who had no menu bar icon.
@@ -53,13 +56,17 @@ final class PanelController: NSObject, NSWindowDelegate {
         self.showsFloatingPill = defaults.bool(forKey: Self.pillDefaultsKey)
 
         // Resting state is the pill, so the widget starts out of the way and the
-        // grid appears only when reached for.
-        let origin = Self.defaultOrigin(for: Self.pillSize)
-        self.panel = OverlayPanel(contentRect: NSRect(origin: origin, size: Self.pillSize))
+        // grid appears only when reached for — back where it was last left, which
+        // for a widget you have parked in a particular corner is the whole point.
+        self.panel = OverlayPanel(contentRect: parking.frame(sized: MinimisedPill.size))
         super.init()
 
+        // The pill may have been clamped onto a screen that has since changed shape,
+        // in which case where it actually landed is now where it lives.
+        parking.park(settledPill: panel.frame)
+
         panel.delegate = self
-        showPill()
+        show(pillView, sized: MinimisedPill.size)
         panel.alphaValue = Self.idleAlpha
         if showsFloatingPill { panel.orderFrontRegardless() }
 
@@ -121,20 +128,59 @@ final class PanelController: NSObject, NSWindowDelegate {
         collapseTask?.cancel()
     }
 
+    /// Snapping is applied live rather than on release, so the panel visibly jumps
+    /// flush and you can see it has taken. The position is recomputed from the
+    /// drag's start each time, so a snap never accumulates into a drift.
     func dragPanel() {
-        guard let anchor = dragAnchor else { return }
+        guard let start = dragAnchor else { return }
         let mouse = NSEvent.mouseLocation
-        panel.setFrameOrigin(
-            NSPoint(
-                x: anchor.window.x + (mouse.x - anchor.mouse.x),
-                y: anchor.window.y + (mouse.y - anchor.mouse.y)
-            )
+        var frame = panel.frame
+        frame.origin = NSPoint(
+            x: start.window.x + (mouse.x - start.mouse.x),
+            y: start.window.y + (mouse.y - start.mouse.y)
         )
+        panel.setFrameOrigin(parking.snapping(frame).origin)
     }
 
     func endPanelDrag() {
         dragAnchor = nil
         panelState.blocksAutoCollapse = false
+        // Where it was dropped decides where the pill now rests and which way the
+        // panel opens from it. This handle is the bar, so an expanded panel parks by
+        // its top edge — see `PanelPlacement.init(draggedPanel:in:)`.
+        if isMinimised {
+            parking.park(pill: panel.frame)
+        } else {
+            parking.park(draggedPanel: panel.frame)
+        }
+    }
+
+    /// The end of a `performDrag` on the minimised pill.
+    ///
+    /// That path is AppKit's, not SwiftUI's — it moves the window from inside its
+    /// own tracking loop, so there is nowhere to apply magnetism *during* the drag
+    /// without fighting it. Snapping on release instead, animated, still reads as
+    /// the edge pulling the pill in.
+    ///
+    /// A plain click arrives here too, so a move has to be proved before the anchor
+    /// is re-read. That click may well have *expanded* the panel, and resolving an
+    /// anchor from the expanded frame flips which corner the panel is parked in:
+    /// a pill near the middle reads as right-anchored, the panel it opens into
+    /// reaches further left and so reads as left-anchored, and minimising would
+    /// then fling the pill several hundred points across the screen.
+    func windowDragEnded(from start: NSRect) {
+        guard isMinimised, panel.frame.size == start.size, panel.frame.origin != start.origin
+        else { return }
+
+        let snapped = parking.snapping(panel.frame)
+        if snapped != panel.frame {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.12
+                panel.animator().setFrame(snapped, display: true)
+            }
+        }
+        // Read from `snapped`, not `panel.frame`: the animator above hasn't landed.
+        parking.park(pill: snapped)
     }
 
     /// Hides the panel, leaving the menu bar icon behind to bring it back.
@@ -147,8 +193,8 @@ final class PanelController: NSObject, NSWindowDelegate {
         isMinimised = true
         isPinned = false
         store.editingID = nil
-        showPill()
-        resize(to: Self.pillSize)
+        show(pillView, sized: MinimisedPill.size)
+        parking.park(settledPill: panel.frame)
         panel.orderOut(nil)
     }
 
@@ -166,8 +212,8 @@ final class PanelController: NSObject, NSWindowDelegate {
     private static let idleAlpha: CGFloat = 0.55
     private var isPinned = false
 
-    private func showExpanded() {
-        let view = RootView(
+    private var expandedView: RootView {
+        RootView(
             store: store,
             panelState: panelState,
             onClose: { [weak self] in self?.close() },
@@ -180,16 +226,37 @@ final class PanelController: NSObject, NSWindowDelegate {
                 ended: { [weak self] in self?.endPanelDrag() }
             )
         )
-        panel.contentView = FirstMouseHostingView(rootView: view)
     }
 
-    private func showPill() {
-        let view = MinimisedPill(
+    private var pillView: MinimisedPill {
+        MinimisedPill(
             store: store,
             onExpand: { [weak self] in self?.expand() },
             onHoverChange: { [weak self] hovering in self?.setHovering(hovering) }
         )
+    }
+
+    /// Swaps what the panel shows and what size it is, in that order — **resize
+    /// first, then install the view.**
+    ///
+    /// The order is the whole point of this method existing. Installing the view
+    /// first laid it out at the size the panel *was*: opening from the pill, the
+    /// grid measured 132pt of width, decided that was one column, and stacked every
+    /// tile vertically. The window then jumped to 432pt and the tiles animated out
+    /// of that column into their real slots — a visible cascade on every open.
+    ///
+    /// It was worst opening from the right-hand edge of the screen, because there
+    /// the window's origin moves too: the tiles started 300pt to the right of where
+    /// they belonged and had to travel the whole way back. Opening from the left,
+    /// the origin stays put and only the fan-out showed, which is why the same bug
+    /// looked like it only happened on one side.
+    ///
+    /// `display: false` keeps the resized window from drawing its old contents; the
+    /// incoming view is laid out once, at its final size, and drawn once.
+    private func show(_ view: some View, sized size: NSSize) {
+        panel.setFrame(parking.frame(sized: size), display: false)
         panel.contentView = FirstMouseHostingView(rootView: view)
+        panel.displayIfNeeded()
     }
 
     /// The whole interaction model: the pill expands under the pointer and folds
@@ -255,7 +322,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private func togglePin() {
         isPinned.toggle()
         collapseTask?.cancel()
-        showExpanded()
+        show(expandedView, sized: expandedSize)
         fade(to: 1.0, quickly: true)
     }
 
@@ -266,8 +333,9 @@ final class PanelController: NSObject, NSWindowDelegate {
         isMinimised = true
         isPinned = false
         store.editingID = nil
-        showPill()
-        resize(to: Self.pillSize)
+        show(pillView, sized: MinimisedPill.size)
+        // The resting spot is the one worth remembering across a quit.
+        parking.park(settledPill: panel.frame)
         // With the pill turned off, minimising hides the panel outright — the menu
         // bar icon is then the only way back in, which is the point of the setting.
         if showsFloatingPill {
@@ -287,8 +355,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         collapseTask?.cancel()
         expandTask?.cancel()
         isMinimised = false
-        showExpanded()
-        resize(to: expandedSize)
+        show(expandedView, sized: expandedSize)
         if takeFocus {
             panel.makeKeyAndOrderFront(nil)
         } else {
@@ -298,13 +365,17 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     // MARK: - Menu bar
 
-    /// Clicking the menu bar icon. Opens beneath the icon when it was fully hidden,
-    /// so the panel appears where the user just clicked rather than wherever it was
-    /// last left on a possibly different screen.
+    /// Clicking the menu bar icon. Reopens the panel **where it was last left**,
+    /// including across a quit — a widget you have parked in a particular corner
+    /// should stay there, and being relocated on every open is the more surprising
+    /// behaviour by far.
+    ///
+    /// The icon is only a fallback, for when that spot is gone: a display unplugged
+    /// since, which would otherwise strand the panel somewhere unreachable.
     private func toggleFromMenuBar() {
         if isMinimised {
-            if !panel.isVisible, let anchor = menuBar?.screenFrame {
-                moveBelow(anchor)
+            if !parking.isOnScreen(panel.frame), let icon = menuBar?.screenFrame {
+                moveBelow(icon)
             }
             expand(takeFocus: true)
             fade(to: 1.0, quickly: true)
@@ -326,27 +397,21 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     /// Parks the panel just below a menu bar item, ready to be expanded.
     ///
-    /// Positioned by its **top** edge, because `expand` grows downward from the
-    /// top-left; setting the expanded origin here would leave the panel a full
-    /// panel-height too low once it opened.
-    private func moveBelow(_ anchor: NSRect) {
-        let size = expandedSize
-        var top = anchor.minY - 6
-        var x = anchor.midX - size.width / 2
-
-        let screen = NSScreen.screens.first { $0.frame.intersects(anchor) } ?? NSScreen.main
-        if let visible = screen?.visibleFrame {
-            x = min(max(x, visible.minX + 8), visible.maxX - size.width - 8)
-            top = min(top, visible.maxY)
-            // Keep the expanded panel on screen if there is room for it at all.
-            if top - size.height < visible.minY {
-                top = min(visible.minY + size.height, visible.maxY)
-            }
-        }
-        panel.setFrame(
-            NSRect(x: x, y: top - Self.pillSize.height, width: Self.pillSize.width, height: Self.pillSize.height),
-            display: false
+    /// The **pill** is parked here, not the expanded panel: the panel grows from the
+    /// pill's corner, and parking resolves that corner from where this lands — under
+    /// an icon on the right of the menu bar the panel will open leftwards, on the
+    /// left it opens rightwards, and either way downwards from the top edge.
+    private func moveBelow(_ icon: NSRect) {
+        let frame = parking.clamped(
+            NSRect(
+                x: icon.midX - MinimisedPill.size.width / 2,
+                y: icon.minY - 6 - MinimisedPill.size.height,
+                width: MinimisedPill.size.width,
+                height: MinimisedPill.size.height
+            )
         )
+        panel.setFrame(frame, display: false)
+        parking.park(pill: frame)
     }
 
     /// Global-hotkey entry point: open it for real (focus and all), or fold it away.
@@ -375,18 +440,11 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
     }
 
-    /// Resizes about the panel's top-left, so collapsing doesn't make it leap across
-    /// the screen. AppKit frames are bottom-left origin, hence the y adjustment.
+    /// Gives the panel a new size. Where that size lands is `PanelParking`'s
+    /// business — every frame hangs off the parked corner, so collapsing doesn't
+    /// make the panel leap across the screen and expanding grows *into* it.
     private func resize(to size: NSSize, animated: Bool = false) {
-        var frame = panel.frame
-        frame.origin.y += frame.size.height - size.height
-        frame.size = size
-
-        if let screen = panel.screen ?? NSScreen.main {
-            let visible = screen.visibleFrame
-            frame.origin.x = min(max(frame.origin.x, visible.minX), visible.maxX - size.width)
-            frame.origin.y = min(max(frame.origin.y, visible.minY), visible.maxY - size.height)
-        }
+        let frame = parking.frame(sized: size)
 
         if animated {
             NSAnimationContext.runAnimationGroup { context in
@@ -397,11 +455,5 @@ final class PanelController: NSObject, NSWindowDelegate {
         } else {
             panel.setFrame(frame, display: true, animate: false)
         }
-    }
-
-    private static func defaultOrigin(for size: NSSize) -> NSPoint {
-        guard let screen = NSScreen.main else { return NSPoint(x: 200, y: 200) }
-        let visible = screen.visibleFrame
-        return NSPoint(x: visible.maxX - size.width - 40, y: visible.maxY - size.height - 40)
     }
 }
