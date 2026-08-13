@@ -713,6 +713,20 @@ Consequently the expanded panel never fades. Window alpha dims *everything*
 including tiles, which defeats the point; only the resting pill dims, and
 `setHovering` special-cases `!isMinimised` to keep the grid at full alpha.
 
+### The pill is one number
+
+At rest the widget is a badge and a chevron: how many notes have gone overdue, or
+how many you have when none have, coloured by the same traffic light as the tiles.
+It carried two lines of text beside that until it didn't earn them — a widget whose
+whole job is to sit in the corner being ignorable should not be explaining itself in
+prose. The words moved to the tooltip, which is also where the *scope* is spelled
+out, since the count covers boards you cannot see.
+
+`MinimisedPill.size` is derived from that content and nothing else, and the comment
+on it does the arithmetic. Anything added back to the pill has to change that
+constant too — the window is what snaps against a screen edge, so a view that no
+longer fills it parks with a transparent margin.
+
 ### Two ways in: the menu bar and the pill
 
 `MenuBarItem` owns an `NSStatusItem` whose title carries the overdue count. Both

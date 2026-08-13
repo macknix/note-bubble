@@ -157,8 +157,9 @@ which is exactly why the dots speak for the rest.
 
 The pill and the menu bar icon are the other way round: they're what you see when
 the panel is closed and there's no board in front of you, so they count **every
-bubble on every board**. Minimised with three boards on the go, the pill reads
-*12 overdue, all told*.
+bubble on every board**. The pill is one number — red for how many have gone
+overdue, green for how many bubbles you have when none have — and hovering it
+spells that out in words, scope and all.
 
 **To file a bubble somewhere else, drag it onto that board's dot.** Rest it there
 for a moment and that board slides into view behind the bubble still in your hand,

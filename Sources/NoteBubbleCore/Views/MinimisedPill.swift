@@ -3,9 +3,14 @@ import SwiftUI
 /// Collapsed state: a small pill showing what's gone red, click to expand.
 struct MinimisedPill: View {
     /// The pill's window, exactly — the view below fills it rather than sizing
-    /// itself, since this rectangle is what snaps against a screen edge. Wide enough
-    /// for a two-digit badge beside the longest label, and no wider.
-    static let size = NSSize(width: 132, height: 46)
+    /// itself, since this rectangle is what snaps against a screen edge.
+    ///
+    /// It is the badge and the chevron and nothing else: 3pt outer padding, 11pt
+    /// inside the capsule, a 24pt badge, an 8pt gap, a 13pt chevron, and the same
+    /// again on the right. It used to carry two lines of text as well and was 132pt
+    /// wide for them; at rest the number *is* the information, and the words beside
+    /// it only made the widget harder to ignore.
+    static let size = NSSize(width: 76, height: 46)
 
     @ObservedObject var store: BubbleStore
     let onExpand: () -> Void
@@ -21,42 +26,23 @@ struct MinimisedPill: View {
     private var overdue: Int { counts.overdue }
     private var total: Int { counts.notes }
 
-    /// With more than one board the second line gives the number above it its scope,
-    /// so it cannot be mistaken for one board's worth. Which board will open is left
-    /// to the tooltip: it is the less useful of the two, and there is only room for
-    /// one of them.
-    ///
-    /// **There are 43pt for this line** — 132 less the pill's insets, the badge, the
-    /// chevron and the gaps between them, which is what "no wider" in `size` above
-    /// actually buys. "all fresh" is 35pt and was the longest label the pill was
-    /// built around. Two attempts at naming the scope overflowed it before it was
-    /// measured rather than guessed: "3 workspaces" became "3 work…", "everywhere"
-    /// became "everyw…". "all told" is 30pt, names no noun that would compete with
-    /// the workspace chip's, and does not grow with the number of boards.
-    private var subtitle: String {
-        guard !store.hasMultipleWorkspaces else { return "all told" }
-        return overdue > 0 ? "\(total) total" : "all fresh"
-    }
-
+    /// Everything the pill no longer says out loud. The badge is a number and a
+    /// colour; this is where it is spelled out in words, including the scope — which
+    /// matters most for the count, since it covers boards you cannot see.
     private var tooltip: String {
-        store.hasMultipleWorkspaces
-            ? "Click to open Note Bubble on \(store.currentWorkspace.displayName) · drag to move"
-            : "Click to open Note Bubble · drag to move"
+        let scope = store.hasMultipleWorkspaces ? " across every workspace" : ""
+        let summary = overdue > 0
+            ? "\(overdue) overdue\(scope)"
+            : "\(total) \(total == 1 ? "bubble" : "bubbles")\(scope), all fresh"
+        let opens = store.hasMultipleWorkspaces
+            ? " on \(store.currentWorkspace.displayName)"
+            : ""
+        return "Note Bubble — \(summary) · click to open\(opens), drag to move"
     }
 
     var body: some View {
         HStack(spacing: 8) {
             badge
-
-            VStack(alignment: .leading, spacing: 0) {
-                Text(overdue > 0 ? "overdue" : "bubbles")
-                    .font(.system(size: 10, weight: .semibold))
-                Text(subtitle)
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
 
             Spacer(minLength: 0)
 
