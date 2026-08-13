@@ -66,8 +66,12 @@ final class MenuBarItem {
         return window.convertToScreen(button.convert(button.bounds, to: nil))
     }
 
+    /// The count is across **every** board, like the pill's — the icon is on screen
+    /// whether or not the panel is, so a number describing only the selected board
+    /// would go quiet about notes rotting on the others. The Workspaces submenu is
+    /// where that total gets broken down again, board by board.
     private func refreshBadge() {
-        let overdue = store.overdueCount
+        let overdue = store.everywhere.overdue
         item.button?.title = overdue > 0 ? " \(overdue)" : ""
         item.button?.toolTip = overdue > 0
             ? "Note Bubble — \(overdue) overdue"

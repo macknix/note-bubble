@@ -158,11 +158,19 @@ final class BubbleStore: ObservableObject {
         return counts
     }
 
-    /// Notes anywhere in the tree that have gone red. Scoped to the board on screen,
-    /// like every other count in the bar — a number that includes boards you can't
-    /// see is a number you can't act on. What another board is up to is said by the
-    /// colour of its dot instead.
-    var overdueCount: Int { stageCounts.overdue }
+    /// Every unpopped bubble in the app, and how many of them have gone red.
+    ///
+    /// The opposite scoping to `stageCounts`, deliberately, and the two are used in
+    /// opposite places. **Inside the panel** a count describes the board in front of
+    /// you, because that is the one you can act on. **Outside it** — the resting
+    /// pill and the menu bar icon — there is no board in front of you, so a count
+    /// that only described one would be quietly ignoring the rest of your notes.
+    var everywhere: (notes: Int, overdue: Int) {
+        workspaces.reduce(into: (notes: 0, overdue: 0)) { totals, workspace in
+            totals.notes += workspace.notes.flattened.count
+            totals.overdue += workspace.overdueCount
+        }
+    }
 
     // MARK: - Workspaces
 

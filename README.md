@@ -151,10 +151,14 @@ of the bar are the affordance and the map: one per board, in order, with the one
 you're on drawn wider.
 
 Each dot is coloured by the **worst thing on that board**, so a board going red
-while you're looking at another one still says so. The counts in the bar, the pill
-and the menu bar deliberately describe only the board in front of you — a number
-that includes boards you can't see isn't a number you can act on — which is exactly
-why the dots have to speak for the rest.
+while you're looking at another one still says so. The counts *in the bar* describe
+only the board in front of you, because that's the one you can do something about —
+which is exactly why the dots speak for the rest.
+
+The pill and the menu bar icon are the other way round: they're what you see when
+the panel is closed and there's no board in front of you, so they count **every
+bubble on every board**. Minimised with three boards on the go, the pill reads
+*12 overdue, all told*.
 
 **To file a bubble somewhere else, drag it onto that board's dot.** Rest it there
 for a moment and that board slides into view behind the bubble still in your hand,
@@ -163,9 +167,8 @@ dot to change your mind, or back to the dot of the board you started on to call 
 off. Let go and the note lands there. ⌘Z brings it back.
 
 Click the workspace name for the full list, plus rename and delete. Deleting a board
-with notes on it asks first, and is undoable. Once there is more than one board, the
-resting pill names the one it will open, so you always know which you're going back
-to.
+with notes on it asks first, and is undoable. Hover the resting pill to be told which
+board it will open on.
 
 ### The traffic lights
 
@@ -181,8 +184,9 @@ without retyping it.
 
 The badges at the top left of the bar count how many notes are in each state across
 the current board's whole tree. Only states you actually have are shown, and the overdue badge
-pulses when it isn't zero. The menu bar icon and the minimised pill show the overdue
-count too.
+pulses when it isn't zero. The menu bar icon and the minimised pill show an overdue
+count too — theirs covers every board, since when the panel is shut there's no board
+in front of you.
 
 ## Pop sounds
 
@@ -212,7 +216,7 @@ an older build will not read it.
 
 ```bash
 swift build                # compile check
-swift run NoteBubbleTests  # test suite (335 checks)
+swift run NoteBubbleTests  # test suite (341 checks)
 ./Scripts/build-app.sh     # assemble build/Note Bubble.app
 ```
 

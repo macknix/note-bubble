@@ -276,10 +276,10 @@ enum BubbleStoreTests {
             var buried = BubbleNode(text: "buried", createdAt: old)
             buried.children = [BubbleNode(text: "deep", createdAt: old)]
             store.replaceAll(with: [buried, BubbleNode(text: "fresh")])
-            Check.equal(store.overdueCount, 2, "the overdue count spans the whole tree")
+            Check.equal(store.stageCounts.overdue, 2, "the overdue count spans the whole tree")
 
             store.touch(buried.id)
-            Check.equal(store.overdueCount, 1, "touching a note resets its clock")
+            Check.equal(store.stageCounts.overdue, 1, "touching a note resets its clock")
 
             store.saveNow()
             let reloaded = BubbleStore(fileURL: url)

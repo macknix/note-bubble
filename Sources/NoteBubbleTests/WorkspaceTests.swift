@@ -261,6 +261,35 @@ enum WorkspaceTests {
             Check.isTrue(recovered.visible.isEmpty, "an empty one")
         }
 
+        Check.suite("Workspaces — counting inside the panel and outside it") {
+            let (store, url) = makeStore()
+            defer { try? FileManager.default.removeItem(at: url) }
+
+            let old = Date().addingTimeInterval(-10 * 86_400)
+            store.replaceAll(with: [BubbleNode(text: "home fresh"),
+                                    BubbleNode(text: "home rotting", createdAt: old)])
+            store.addWorkspace(named: "Work")
+            store.renamingWorkspaceID = nil
+            var buried = BubbleNode(text: "work parent", createdAt: old)
+            buried.children = [BubbleNode(text: "work child", createdAt: old)]
+            store.replaceAll(with: [buried])
+
+            // Inside the panel, a count describes the board in front of you.
+            Check.equal(store.stageCounts.overdue, 2, "the bar counts this board, nesting and all")
+            Check.equal(store.stageCounts.fresh, 0, "and only this board")
+
+            // Outside it — the resting pill, the menu bar icon — there is no board in
+            // front of you, so the count has to cover the lot. A note rotting on a
+            // board you haven't opened in a fortnight is exactly what it is for.
+            Check.equal(store.everywhere.notes, 4, "every bubble in the app, at any depth")
+            Check.equal(store.everywhere.overdue, 3, "and every overdue one, on any board")
+
+            store.selectWorkspace(at: 0)
+            Check.equal(store.everywhere.overdue, 3,
+                        "which board is selected makes no difference to it")
+            Check.equal(store.stageCounts.overdue, 1, "while the bar's count follows the board")
+        }
+
         Check.suite("Workspaces — the bar's second row") {
             let (store, url) = makeStore()
             defer { try? FileManager.default.removeItem(at: url) }

@@ -13,15 +13,35 @@ struct MinimisedPill: View {
 
     @State private var hovering = false
 
-    private var overdue: Int { store.overdueCount }
-    private var total: Int { store.root.flattened.count }
+    /// **Everything, not just the board that happens to be selected.** Minimised,
+    /// there is no board in front of you: this is the app's one at-a-glance number,
+    /// and a note rotting on a board you last opened a fortnight ago is exactly the
+    /// thing it should be telling you about.
+    private var counts: (notes: Int, overdue: Int) { store.everywhere }
+    private var overdue: Int { counts.overdue }
+    private var total: Int { counts.notes }
 
-    /// The counts on the pill are the current board's, so with more than one board
-    /// the second line has to say which — otherwise the resting state of the app
-    /// shows a number with no idea what it is counting.
+    /// With more than one board the second line gives the number above it its scope,
+    /// so it cannot be mistaken for one board's worth. Which board will open is left
+    /// to the tooltip: it is the less useful of the two, and there is only room for
+    /// one of them.
+    ///
+    /// **There are 43pt for this line** — 132 less the pill's insets, the badge, the
+    /// chevron and the gaps between them, which is what "no wider" in `size` above
+    /// actually buys. "all fresh" is 35pt and was the longest label the pill was
+    /// built around. Two attempts at naming the scope overflowed it before it was
+    /// measured rather than guessed: "3 workspaces" became "3 work…", "everywhere"
+    /// became "everyw…". "all told" is 30pt, names no noun that would compete with
+    /// the workspace chip's, and does not grow with the number of boards.
     private var subtitle: String {
-        guard !store.hasMultipleWorkspaces else { return store.currentWorkspace.displayName }
+        guard !store.hasMultipleWorkspaces else { return "all told" }
         return overdue > 0 ? "\(total) total" : "all fresh"
+    }
+
+    private var tooltip: String {
+        store.hasMultipleWorkspaces
+            ? "Click to open Note Bubble on \(store.currentWorkspace.displayName) · drag to move"
+            : "Click to open Note Bubble · drag to move"
     }
 
     var body: some View {
@@ -71,7 +91,7 @@ struct MinimisedPill: View {
             Divider()
             Button("Quit Note Bubble") { NSApp.terminate(nil) }
         }
-        .help("Click to open Note Bubble · drag to move")
+        .help(tooltip)
     }
 
     /// Rounded square rather than a circle, matching the tiles it stands in for.

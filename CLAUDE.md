@@ -223,11 +223,14 @@ of note ids, and those ids mean nothing on another board.
 
 Two consequences worth knowing:
 
-- **Counts are scoped to the board on screen** — the status handle, the pill's
-  badge, the menu bar's badge. A number that includes boards you can't see is a
-  number you can't act on. What the other boards are up to is said by the colour of
-  their **dots**, each showing the worst stage on that board, and spelled out in the
-  menu bar's Workspaces submenu.
+- **Counts are scoped by where they are read, not by what is convenient.** Inside
+  the panel — the status handle — a count describes the board in front of you,
+  because that is the one you can act on, and what the *other* boards are up to is
+  said by the colour of their **dots**. Outside the panel — the resting pill and the
+  menu bar icon — there is no board in front of you, so both count **everything**
+  (`BubbleStore.everywhere`): a widget at rest that stayed quiet about a note rotting
+  on the board you last opened a fortnight ago would be failing at its one job. The
+  menu bar's Workspaces submenu breaks that total back down, board by board.
 - **The undo snapshot holds every workspace,** not just the current one, because
   deleting a whole board is undoable and there would otherwise be nowhere to put it
   back. Deleting a board with notes on it asks first (`ConfirmSheet`, in-panel, for
