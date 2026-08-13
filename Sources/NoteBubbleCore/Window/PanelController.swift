@@ -14,8 +14,9 @@ final class PanelController: NSObject, NSWindowDelegate {
     private static let panelWidth: CGFloat = 432
     /// The glass bar plus its margins.
     private static let headerHeight: CGFloat = 58
-    /// The breadcrumb row, which only appears once you are inside a bubble.
-    private static let trailRowHeight: CGFloat = 34
+    /// The bar's second row — workspace and breadcrumb — which is only there when
+    /// there is something for it to say. `BubbleStore.showsPlaceRow` decides.
+    private static let placeRowHeight: CGFloat = 34
     /// Enough for one row, so a nearly empty panel isn't a sliver.
     private static let minimumBodyHeight: CGFloat = 152
     /// Beyond this the grid scrolls rather than the panel swallowing the screen.
@@ -32,6 +33,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private var expandTask: Task<Void, Never>?
 
     private var storeObserver: AnyCancellable?
+    private var dragObserver: AnyCancellable?
     private var menuBar: MenuBarItem?
 
     /// Whether the floating on-screen pill is shown when minimised. With a menu bar
@@ -74,7 +76,9 @@ final class PanelController: NSObject, NSWindowDelegate {
             store: store,
             onToggle: { [weak self] in self?.toggleFromMenuBar() },
             showsPill: { [weak self] in self?.showsFloatingPill ?? true },
-            onTogglePill: { [weak self] in self?.toggleFloatingPill() }
+            onTogglePill: { [weak self] in self?.toggleFloatingPill() },
+            onSelectWorkspace: { [weak self] index in self?.showWorkspace(at: index) },
+            onNewWorkspace: { [weak self] in self?.newWorkspace() }
         )
 
         // The panel is only as tall as its contents need, so adding or popping a
@@ -83,6 +87,97 @@ final class PanelController: NSObject, NSWindowDelegate {
         storeObserver = store.objectWillChange.sink { [weak self] _ in
             Task { @MainActor in self?.fitToContent() }
         }
+
+        // A tile landing is the other moment the panel may owe itself a resize: the
+        // board may have changed under it while the fitting above was held off.
+        dragObserver = panelState.$isDraggingTile
+            .removeDuplicates()
+            .sink { [weak self] isDragging in
+                guard !isDragging else { return }
+                Task { @MainActor in self?.fitToContent() }
+            }
+
+        installSwipeMonitor()
+    }
+
+    deinit {
+        if let scrollMonitor { NSEvent.removeMonitor(scrollMonitor) }
+    }
+
+    // MARK: - Swiping between workspaces
+
+    private var scrollMonitor: Any?
+    private var swipe = WorkspaceSwipe()
+
+    /// Two-finger swipes arrive as scroll events, and they have to be intercepted
+    /// *before* the grid's `ScrollView` sees them — hence a local monitor rather
+    /// than a SwiftUI gesture, which would be layered underneath it.
+    ///
+    /// A local monitor is also the only way to be selective: returning the event
+    /// passes it through untouched, so vertical scrolling still scrolls the grid,
+    /// and only the one event that completes a horizontal swipe is swallowed.
+    private func installSwipeMonitor() {
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            // Scrolls anywhere else in the app — there is nowhere else, but a
+            // monitor sees everything the app receives — are none of our business.
+            guard event.window?.delegate === self else { return event }
+
+            let scroll = WorkspaceSwipe.Scroll(
+                deltaX: event.scrollingDeltaX,
+                deltaY: event.scrollingDeltaY,
+                isGestureStart: event.phase == .began,
+                isInverted: event.isDirectionInvertedFromDevice,
+                time: event.timestamp
+            )
+            // Monitors are delivered on the main thread; this is the same bridge
+            // `main.swift` uses to say so. Only the plain values above cross into
+            // it, so there is nothing here for concurrency checking to object to.
+            let consumed = MainActor.assumeIsolated { self?.consumeSwipe(scroll) ?? false }
+            return consumed ? nil : event
+        }
+    }
+
+    /// Whether this scroll turned out to be a workspace swipe.
+    private func consumeSwipe(_ scroll: WorkspaceSwipe.Scroll) -> Bool {
+        // Nothing to swipe between, or nothing to swipe on.
+        guard !isMinimised, store.hasMultipleWorkspaces else { return false }
+        // Mid-drag or mid-confirmation, the panel is spoken for — the same flag the
+        // auto-collapse checks, and for the same reason.
+        guard !panelState.blocksAutoCollapse else { return false }
+
+        switch swipe.handle(scroll) {
+        case .none:
+            return false
+        case .next:
+            return withAnimation(Motion.reflow) { store.goToNextWorkspace() }
+        case .previous:
+            return withAnimation(Motion.reflow) { store.goToPreviousWorkspace() }
+        }
+    }
+
+    // MARK: - Workspace commands
+
+    /// ⌘⇧N, and the menu bar's "New workspace".
+    func newWorkspace() {
+        if isMinimised { expand() }
+        withAnimation(Motion.reflow) { _ = store.addWorkspace() }
+    }
+
+    /// ⌘→ and ⌘←.
+    func nextWorkspace() {
+        withAnimation(Motion.reflow) { _ = store.goToNextWorkspace() }
+    }
+
+    func previousWorkspace() {
+        withAnimation(Motion.reflow) { _ = store.goToPreviousWorkspace() }
+    }
+
+    /// Picking a board from the menu bar opens it, rather than switching one you
+    /// cannot see.
+    private func showWorkspace(at index: Int) {
+        withAnimation(Motion.reflow) { store.selectWorkspace(at: index) }
+        expand(takeFocus: true)
+        fade(to: 1.0, quickly: true)
     }
 
     /// Height the expanded panel wants for the notes currently on screen. Tiles are
@@ -92,12 +187,17 @@ final class PanelController: NSObject, NSWindowDelegate {
         let specs = store.visible.map { TileSizeCache.spec(for: $0, in: layout) }
         let body = layout.contentHeight(for: specs)
         let clamped = min(max(body, Self.minimumBodyHeight), Self.maximumBodyHeight)
-        let chrome = Self.headerHeight + (store.isAtRoot ? 0 : Self.trailRowHeight)
+        let chrome = Self.headerHeight + (store.showsPlaceRow ? Self.placeRowHeight : 0)
         return NSSize(width: Self.panelWidth, height: chrome + clamped)
     }
 
     private func fitToContent() {
         guard !isMinimised else { return }
+        // Not while a tile is in the air. Hovering a workspace dot swipes to that
+        // board mid-drag, and boards differ wildly in height — resizing then would
+        // move the window (and with it the dots being aimed at) out from under the
+        // drag. It settles as soon as the tile lands; see the subscription below.
+        guard !panelState.isDraggingTile else { return }
         let target = expandedSize
         guard abs(panel.frame.height - target.height) > 0.5 else { return }
         resize(to: target, animated: true)
@@ -193,6 +293,8 @@ final class PanelController: NSObject, NSWindowDelegate {
         isMinimised = true
         isPinned = false
         store.editingID = nil
+        store.renamingWorkspaceID = nil
+        swipe.reset()
         show(pillView, sized: MinimisedPill.size)
         parking.park(settledPill: panel.frame)
         panel.orderOut(nil)
@@ -254,6 +356,10 @@ final class PanelController: NSObject, NSWindowDelegate {
     /// `display: false` keeps the resized window from drawing its old contents; the
     /// incoming view is laid out once, at its final size, and drawn once.
     private func show(_ view: some View, sized size: NSSize) {
+        // The outgoing view takes its @State with it, including anything it knew
+        // about a drag in progress. What survives is `panelState`, so it is cleared
+        // here rather than left describing a tile that no longer exists.
+        panelState.endTileDrag()
         panel.setFrame(parking.frame(sized: size), display: false)
         panel.contentView = FirstMouseHostingView(rootView: view)
         panel.displayIfNeeded()
@@ -268,7 +374,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
 
         // Expanded is always fully opaque; only the pill fades when unattended.
-        let solid = !isMinimised || hovering || isPinned || store.editingID != nil
+        let solid = !isMinimised || hovering || isPinned || store.isEditing
         fade(to: solid ? 1.0 : Self.idleAlpha, quickly: hovering)
 
         if hovering {
@@ -310,7 +416,7 @@ final class PanelController: NSObject, NSWindowDelegate {
             guard !Task.isCancelled, let self else { return }
             // Re-check at fire time: any of these may have become true while waiting.
             guard !self.isPinned,
-                  self.store.editingID == nil,
+                  !self.store.isEditing,
                   !self.panelState.blocksAutoCollapse
             else { return }
             self.minimise()
@@ -333,6 +439,10 @@ final class PanelController: NSObject, NSWindowDelegate {
         isMinimised = true
         isPinned = false
         store.editingID = nil
+        store.renamingWorkspaceID = nil
+        // A swipe left half-finished when the panel folded away must not be picked
+        // up by the next one.
+        swipe.reset()
         show(pillView, sized: MinimisedPill.size)
         // The resting spot is the one worth remembering across a quit.
         parking.park(settledPill: panel.frame)
@@ -431,7 +541,9 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     /// Escape backs out one level, or minimises when already at the top.
     func escape() {
-        if store.editingID != nil {
+        if store.renamingWorkspaceID != nil {
+            store.renamingWorkspaceID = nil
+        } else if store.editingID != nil {
             store.editingID = nil
         } else if !store.isAtRoot {
             store.goUp()

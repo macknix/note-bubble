@@ -33,13 +33,27 @@ final class OverlayPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 
     /// Borderless windows swallow ⌘-shortcuts by default; wire up the essentials.
+    ///
+    /// This is the end of the responder chain, so a focused text field has already
+    /// had its go — ⌘← inside a note still means "start of line" and never reaches
+    /// here.
     override func keyDown(with event: NSEvent) {
         if event.modifierFlags.contains(.command) {
             switch event.charactersIgnoringModifiers {
             case "w", "m": (delegate as? PanelController)?.minimise(); return
             case "q": NSApp.terminate(nil); return
             case "n": (delegate as? PanelController)?.newBubble(); return
+            // ⇧ makes it a new *workspace*: `charactersIgnoringModifiers` keeps the
+            // shift, so the capital is the whole test.
+            case "N": (delegate as? PanelController)?.newWorkspace(); return
             case "z": (delegate as? PanelController)?.undo(); return
+            default: break
+            }
+
+            // Paging between workspaces, in the direction the arrows point.
+            switch event.keyCode {
+            case 123: (delegate as? PanelController)?.previousWorkspace(); return
+            case 124: (delegate as? PanelController)?.nextWorkspace(); return
             default: break
             }
         }

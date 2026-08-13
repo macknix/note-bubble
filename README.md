@@ -7,6 +7,8 @@ they get old, and pop when the task is done.
 - **Triage by colour.** Every note is dated and shifts green → amber → red over a
   week, so what's gone stale is obvious without reading anything.
 - **Bubbles inside bubbles.** Any note can hold sub-notes, arbitrarily deep.
+- **Separate boards.** Keep work, home and someday apart, and two-finger swipe
+  between them. Drag a bubble onto another board to file it there.
 - **Out of the way.** It rests in the menu bar and as a small pill; hover to open,
   move away and it folds back. No Dock icon, nothing in ⌘-Tab.
 - **Popping is the reward.** Hold a bubble, watch it swell, and it bursts with a
@@ -51,6 +53,9 @@ plain JSON file in your own Application Support folder.
 | **Pop a bubble** (done) | Press and hold — it swells, then bursts |
 | **Undo a pop** | **⌘Z**, the toast that appears, or ↩ in the bar |
 | **Rearrange** | Drag a tile; the others shuffle around it |
+| **Switch workspace** | **Two-finger swipe** across the panel, ⌘← / ⌘→, or click a dot |
+| **Move a bubble to another workspace** | Drag it onto that workspace's dot, and let go |
+| New workspace | ⌘⇧N, or *New workspace* in the workspace menu |
 | Shuffle everything | The 🔀 button — undoable with ⌘Z |
 | **Finish writing** | **⏎** — or click anywhere off the tile |
 | Discard an edit | **Esc** — puts back what it said before |
@@ -76,8 +81,10 @@ grid — it appears just below the icon. When anything has gone red the icon sho
 the count beside it, so the thing the traffic lights exist to tell you is visible
 without opening anything.
 
-**Right-click the icon** for Open, *Show floating pill*, *Mute pop sounds*, and
-Quit.
+**Right-click the icon** for Open, a **Workspaces** submenu, *Show floating pill*,
+*Mute pop sounds*, and Quit. Picking a workspace there opens the panel on it, and
+any board with overdue notes says so beside its name — so a board you haven't
+looked at in a fortnight can still get your attention.
 
 ### Staying out of the way
 
@@ -131,6 +138,35 @@ badge has that many sub-bubbles in it; click to go in, and the breadcrumb along
 the top takes you back out. Popping a bubble pops everything inside it, so a
 parent is done when its contents are.
 
+### Workspaces
+
+One board is often enough, and if you only ever have one you will never see any of
+this: the second row of the bar appears when there is something to say. Make another
+with **⌘⇧N** and it opens straight into naming it — leave the name blank and never
+write anything on it and it quietly goes away again, exactly like an empty bubble.
+
+**Two-finger swipe** across the panel to move between boards, the way you would
+between pages. ⌘← and ⌘→ do the same thing from the keyboard. The dots at the right
+of the bar are the affordance and the map: one per board, in order, with the one
+you're on drawn wider.
+
+Each dot is coloured by the **worst thing on that board**, so a board going red
+while you're looking at another one still says so. The counts in the bar, the pill
+and the menu bar deliberately describe only the board in front of you — a number
+that includes boards you can't see isn't a number you can act on — which is exactly
+why the dots have to speak for the rest.
+
+**To file a bubble somewhere else, drag it onto that board's dot.** Rest it there
+for a moment and that board slides into view behind the bubble still in your hand,
+so you can see where it's about to go. Nothing has happened yet: move to a different
+dot to change your mind, or back to the dot of the board you started on to call it
+off. Let go and the note lands there. ⌘Z brings it back.
+
+Click the workspace name for the full list, plus rename and delete. Deleting a board
+with notes on it asks first, and is undoable. Once there is more than one board, the
+resting pill names the one it will open, so you always know which you're going back
+to.
+
 ### The traffic lights
 
 Tiles are dated from when you wrote them and shift colour continuously:
@@ -144,7 +180,7 @@ still legitimately live, right-click → *Reset age to today* puts it back to gr
 without retyping it.
 
 The badges at the top left of the bar count how many notes are in each state across
-the whole tree. Only states you actually have are shown, and the overdue badge
+the current board's whole tree. Only states you actually have are shown, and the overdue badge
 pulses when it isn't zero. The menu bar icon and the minimised pill show the overdue
 count too.
 
@@ -167,11 +203,16 @@ fallbacks can never shadow a real recording.
 `~/Library/Application Support/NoteBubble/bubbles.json` — plain JSON, safe to
 back up, sync, or edit by hand. Delete it to start over.
 
+It holds every workspace and which one was open. A file written before workspaces
+existed is read as it always was and lifted into a single board called *Notes*, so
+upgrading takes nothing on your part — but once it has been saved in the new shape,
+an older build will not read it.
+
 ## Development
 
 ```bash
 swift build                # compile check
-swift run NoteBubbleTests  # test suite (122 checks)
+swift run NoteBubbleTests  # test suite (335 checks)
 ./Scripts/build-app.sh     # assemble build/Note Bubble.app
 ```
 
@@ -186,12 +227,14 @@ before making structural changes.
 ### Demo data
 
 ```bash
-python3 Scripts/demo-data.py install   # 31 notes, 3 levels deep, all three colours
+python3 Scripts/demo-data.py install   # 37 notes, 3 workspaces, 3 levels deep
 python3 Scripts/demo-data.py restore   # put your own notes back
 ```
 
-Your own notes are backed up first, and the ages are recalculated each time it runs
-so the traffic lights are always properly spread. Quit Note Bubble before
+Three boards: a full one, a small one, and an empty one, so swiping, the dots and
+the empty state all have something to exercise. Your own notes are backed up first,
+and the ages are recalculated each time it runs so the traffic lights are always
+properly spread. Quit Note Bubble before
 installing — it keeps notes in memory and would overwrite the file on its next save.
 
 ### Regenerating assets

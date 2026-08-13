@@ -9,5 +9,9 @@ MainActor.assumeIsolated {
     AgingTests.run()
     BubbleStoreTests.run()
     PanelPlacementTests.run()
+    TileGestureTests.run()
+    WorkspaceTests.run()
+    WorkspaceSwipeTests.run()
+    TileFlightTests.run()
     exit(Check.summary())
 }

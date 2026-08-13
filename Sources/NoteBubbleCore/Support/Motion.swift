@@ -32,4 +32,9 @@ enum Motion {
     static let burstLifetime: Duration = .milliseconds(500)
     /// How long the undo toast stays up.
     static let toastLifetime: Duration = .seconds(4)
+    /// How long a dragged tile must rest on a workspace dot before that board slides
+    /// into view behind it. Short enough to feel like a consequence of stopping,
+    /// long enough that crossing one dot on the way to another doesn't flick through
+    /// every board in between.
+    static let workspacePreview: Duration = .milliseconds(260)
 }

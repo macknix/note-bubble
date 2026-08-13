@@ -16,6 +16,14 @@ struct MinimisedPill: View {
     private var overdue: Int { store.overdueCount }
     private var total: Int { store.root.flattened.count }
 
+    /// The counts on the pill are the current board's, so with more than one board
+    /// the second line has to say which — otherwise the resting state of the app
+    /// shows a number with no idea what it is counting.
+    private var subtitle: String {
+        guard !store.hasMultipleWorkspaces else { return store.currentWorkspace.displayName }
+        return overdue > 0 ? "\(total) total" : "all fresh"
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             badge
@@ -23,9 +31,11 @@ struct MinimisedPill: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(overdue > 0 ? "overdue" : "bubbles")
                     .font(.system(size: 10, weight: .semibold))
-                Text(overdue > 0 ? "\(total) total" : "all fresh")
+                Text(subtitle)
                     .font(.system(size: 9))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
 
             Spacer(minLength: 0)

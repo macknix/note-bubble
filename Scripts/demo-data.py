@@ -12,7 +12,9 @@ diff between runs shows only what actually changed.
 
 The board deliberately covers the awkward cases: one-word notes at the minimum
 tile size, paragraphs that force a two-column tile, one note long enough to hit the
-height cap and truncate, three levels of nesting, and notes at every age.
+height cap and truncate, three levels of nesting, and notes at every age. It
+installs three workspaces — a full one, a small one, and an empty one — so the
+swipe, the dots and the empty state all have something to exercise.
 """
 
 import argparse
@@ -103,6 +105,31 @@ BOARD = [
 ]
 
 
+# A second board, deliberately small: switching to it should visibly resize the
+# panel, and its notes must never appear on the first one.
+ERRANDS = [
+    ("Post office", 0, []),
+    ("Pick up the dry cleaning", 2, []),
+    ("Chase the parcel that says delivered but isn't", 9, []),
+    (
+        "Weekly shop",
+        1,
+        [
+            ("Coffee", 1, []),
+            ("Olive oil — the big tin", 1, []),
+        ],
+    ),
+]
+
+# (name, board) — the third is empty on purpose, so the empty state and a grey
+# workspace dot are both on screen without having to make one by hand.
+WORKSPACES = [
+    ("Home", BOARD),
+    ("Errands", ERRANDS),
+    ("Someday", []),
+]
+
+
 def build(entries, path=()):
     now = datetime.now(timezone.utc)
     notes = []
@@ -124,6 +151,27 @@ def count(notes):
     return sum(1 + count(note["children"]) for note in notes)
 
 
+def document():
+    """The whole file: workspaces, and which one opens.
+
+    Workspace ids are derived from the name for the same reason note ids are
+    derived from their path — installing twice produces byte-identical files.
+    """
+    workspaces = [
+        {
+            "id": str(uuid.uuid5(NAMESPACE, f"workspace/{name}")).upper(),
+            "name": name,
+            "notes": build(board, (index,)),
+        }
+        for index, (name, board) in enumerate(WORKSPACES)
+    ]
+    return {
+        "version": 2,
+        "workspaces": workspaces,
+        "currentID": workspaces[0]["id"],
+    }
+
+
 def app_is_running():
     result = subprocess.run(["pgrep", "-f", "Note Bubble.app"], capture_output=True)
     return result.returncode == 0
@@ -143,10 +191,15 @@ def install(force):
         shutil.copy2(STORE, backup)
         print(f"backed up your notes to {os.path.basename(backup)}")
 
-    notes = build(BOARD)
+    data = document()
     with open(STORE, "w") as handle:
-        json.dump(notes, handle, indent=2, sort_keys=True)
-    print(f"installed {count(notes)} demo notes ({len(notes)} at the top level)")
+        json.dump(data, handle, indent=2, sort_keys=True)
+    total = sum(count(workspace["notes"]) for workspace in data["workspaces"])
+    top = len(data["workspaces"][0]["notes"])
+    print(
+        f"installed {total} demo notes across {len(data['workspaces'])} workspaces "
+        f"({top} at the top level of the first)"
+    )
 
 
 def restore():
@@ -168,7 +221,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "print":
-        print(json.dumps(build(BOARD), indent=2, sort_keys=True))
+        print(json.dumps(document(), indent=2, sort_keys=True))
     elif args.command == "install":
         install(args.force)
     else:
