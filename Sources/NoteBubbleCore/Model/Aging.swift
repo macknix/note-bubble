@@ -28,20 +28,13 @@ enum Aging {
         }
     }
 
+    /// On the standard one-week window. Boards can set their own — see `AgeWindow`.
     static func stage(forDays days: Double) -> Stage {
-        switch days {
-        case ..<agingAfterDays: .fresh
-        case ..<redAfterDays: .aging
-        default: .overdue
-        }
+        AgeWindow.standard.stage(forDays: days)
     }
 
-    /// Position through the ageing window, 0 (fresh) to 1 (red), clamped so a note
-    /// months old looks exactly like one a week old rather than wrapping back
-    /// through the hue circle to green.
     static func progress(forDays days: Double) -> Double {
-        let t = min(max(days / redAfterDays, 0), 1)
-        return pow(t, 0.85) // spend slightly longer looking urgent than fresh
+        AgeWindow.standard.progress(forDays: days)
     }
 
     /// The age read aloud — what VoiceOver says where a tile shows "3d".
@@ -72,3 +65,51 @@ enum Aging {
         }
     }
 }
+
+/// How long the notes on one board take to go from fresh to overdue.
+///
+/// A week suits most boards, and a board of slow-burning projects would be red
+/// end to end by Wednesday. Each workspace can set its own; the whole traffic
+/// light stretches to fit, keeping the standard week's proportions — fresh for the
+/// first three-sevenths, ageing until the end, overdue after.
+struct AgeWindow: Codable, Hashable {
+    var overdueAfterDays: Double
+
+    static let standard = AgeWindow(overdueAfterDays: Aging.redAfterDays)
+
+    /// What the workspace menu offers.
+    static let presets: [AgeWindow] = [3, 7, 14, 30, 90].map { AgeWindow(overdueAfterDays: $0) }
+
+    /// When a note on this board stops being fresh.
+    var agingAfterDays: Double {
+        overdueAfterDays * Aging.agingAfterDays / Aging.redAfterDays
+    }
+
+    func stage(forDays days: Double) -> Aging.Stage {
+        switch days {
+        case ..<agingAfterDays: .fresh
+        case ..<overdueAfterDays: .aging
+        default: .overdue
+        }
+    }
+
+    /// Position through the window, 0 (fresh) to 1 (red), clamped so a note long
+    /// past it looks exactly like one just past it rather than wrapping back
+    /// through the hue circle to green.
+    func progress(forDays days: Double) -> Double {
+        let t = min(max(days / overdueAfterDays, 0), 1)
+        return pow(t, 0.85) // spend slightly longer looking urgent than fresh
+    }
+
+    /// "1 week", "3 months" — for the menu.
+    var label: String {
+        let days = Int(overdueAfterDays)
+        switch days {
+        case 7: return "1 week"
+        case let d where d % 30 == 0: return d == 30 ? "1 month" : "\(d / 30) months"
+        case let d where d % 7 == 0: return "\(d / 7) weeks"
+        default: return days == 1 ? "1 day" : "\(days) days"
+        }
+    }
+}
+

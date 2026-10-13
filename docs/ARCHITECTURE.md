@@ -698,6 +698,17 @@ note decays smoothly rather than jumping between three colours. `Aging.Stage`
 (fresh / aging / overdue) exists only where a hard answer is needed — currently
 the overdue count on the minimised pill.
 
+**Each board ages at its own pace.** `Workspace.overdueAfterDays` (nil means the
+standard week) gives it an `AgeWindow`, which stretches the whole traffic light —
+fresh for the first three-sevenths, ageing to the end, overdue after — so a board of
+slow projects can take a month. Everything that judges an age takes the window of the
+board the note is on: tallies (so the counts, dots, pill and menu bar), tile colour
+and footer, the burst, the spoken state, and a previewed board's tiles. It is stored
+as an optional number so old files load unchanged and new ones still open in older
+builds. `AgeWindowMenu` sets it, from the workspace chip and from the status handle's
+context menu — the handle because it is the traffic light being changed, and because
+with a single board the chip is not on screen.
+
 Rules and looks are split: `Aging` (Model) is thresholds, stages and relative-age
 text, Foundation only; `AgingPalette` (Views) is every colour. Anything showing a
 whole stage — a count badge, a workspace dot, the pill — asks for

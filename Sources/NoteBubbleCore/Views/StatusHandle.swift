@@ -12,6 +12,8 @@ import SwiftUI
 struct StatusHandle: View {
     let counts: StageTally
     let drag: PanelDrag
+    /// The board the counts describe, and what its own ageing menu sets.
+    var ageWindowMenu: AgeWindowMenu?
 
     @State private var isDragging = false
 
@@ -47,6 +49,7 @@ struct StatusHandle: View {
         .help(summary)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(summary)
+        .contextMenu { if let ageWindowMenu { ageWindowMenu } }
     }
 
     private var isEmpty: Bool {
@@ -55,12 +58,12 @@ struct StatusHandle: View {
 
     /// Spelled out in words, since the colours alone can't say what they mean.
     private var summary: String {
-        guard !isEmpty else { return "No notes yet — drag to move Note Bubble" }
+        guard !isEmpty else { return "No notes yet — drag to move Note Bubble, right-click to set how fast notes age" }
         var parts: [String] = []
         if counts.fresh > 0 { parts.append("\(counts.fresh) fresh") }
         if counts.aging > 0 { parts.append("\(counts.aging) ageing") }
         if counts.overdue > 0 { parts.append("\(counts.overdue) overdue") }
-        return parts.joined(separator: " · ") + " — drag to move Note Bubble"
+        return parts.joined(separator: " · ") + " — drag to move Note Bubble, right-click to set how fast notes age"
     }
 
     private func badge(_ count: Int, stage: Aging.Stage) -> some View {

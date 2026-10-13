@@ -63,7 +63,7 @@ extension BubbleGrid {
             centre: plan.restingCentre(at: index),
             size: size,
             cornerRadius: TileStyle.cornerRadius(for: size),
-            color: AgingPalette.color(forDays: node.ageInDays(at: store.now))
+            color: AgingPalette.color(forDays: node.ageInDays(at: store.now), in: store.currentWorkspace.window)
         )
 
         guard store.pop(node.id) else {

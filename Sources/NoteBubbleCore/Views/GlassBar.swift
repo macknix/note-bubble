@@ -43,7 +43,11 @@ struct GlassBar: View {
 
     private var controlRow: some View {
         HStack(spacing: 8) {
-            StatusHandle(counts: store.stageCounts, drag: drag)
+            StatusHandle(
+                counts: store.stageCounts,
+                drag: drag,
+                ageWindowMenu: AgeWindowMenu(store: store, workspace: store.currentWorkspace)
+            )
             Spacer(minLength: 6)
             controls
         }

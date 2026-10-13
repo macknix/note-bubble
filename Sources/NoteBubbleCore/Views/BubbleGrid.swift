@@ -208,6 +208,7 @@ struct BubbleGrid: View {
             node: node,
             size: size,
             now: store.now,
+            window: store.currentWorkspace.window,
             isEditing: isEditing,
             isDragging: isDragging,
             pressProgress: tileGesture.isPressed(node.id) ? pressProgress : 0,

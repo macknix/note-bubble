@@ -15,6 +15,8 @@ struct TileFace<Content: View>: View {
     let size: CGSize
     /// What time it is, for the age — `BubbleStore.now`, never `Date()`.
     let now: Date
+    /// How fast notes on this tile's board age — its colour runs on this.
+    var window: AgeWindow = .standard
     var isDragging = false
     var pressProgress: CGFloat = 0
     /// What sits on the glass: the label, or the editor while typing.
@@ -42,8 +44,8 @@ struct TileFace<Content: View>: View {
     }
 
     private var days: Double { node.ageInDays(at: now) }
-    private var tint: Color { AgingPalette.color(forDays: days) }
-    private var shade: Color { AgingPalette.shadeColor(forDays: days) }
+    private var tint: Color { AgingPalette.color(forDays: days, in: window) }
+    private var shade: Color { AgingPalette.shadeColor(forDays: days, in: window) }
 
     /// Layered to read as coloured glass rather than a flat swatch: a frosted
     /// substrate that picks up the desktop behind the panel, a translucent tint on
@@ -106,9 +108,10 @@ struct TileFace<Content: View>: View {
 
 extension TileFace where Content == TileLabel {
     /// The face as it reads at rest: the note's text and its footer.
-    init(node: BubbleNode, size: CGSize, now: Date, isDragging: Bool = false, pressProgress: CGFloat = 0) {
-        self.init(node: node, size: size, now: now, isDragging: isDragging, pressProgress: pressProgress) {
-            TileLabel(node: node, now: now)
+    init(node: BubbleNode, size: CGSize, now: Date, window: AgeWindow = .standard,
+         isDragging: Bool = false, pressProgress: CGFloat = 0) {
+        self.init(node: node, size: size, now: now, window: window, isDragging: isDragging, pressProgress: pressProgress) {
+            TileLabel(node: node, now: now, window: window)
         }
     }
 }
@@ -117,8 +120,9 @@ extension TileFace where Content == TileLabel {
 struct TileLabel: View {
     let node: BubbleNode
     let now: Date
+    var window: AgeWindow = .standard
 
-    private var shade: Color { AgingPalette.shadeColor(forDays: node.ageInDays(at: now)) }
+    private var shade: Color { AgingPalette.shadeColor(forDays: node.ageInDays(at: now), in: window) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -140,7 +144,7 @@ struct TileLabel: View {
             HStack(spacing: 4) {
                 // Overdue says so in a shape as well as a colour, for anyone who
                 // cannot tell this red from the green it started as.
-                if Aging.stage(forDays: node.ageInDays(at: now)) == .overdue {
+                if window.stage(forDays: node.ageInDays(at: now)) == .overdue {
                     Image(systemName: "exclamationmark.circle.fill")
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(.white.opacity(0.9))

@@ -202,6 +202,12 @@ Tiles are dated from when you wrote them and shift colour continuously:
 - **Amber** — 3–6 days
 - **Red** — a week or more
 
+That week is the standard, and **each workspace can have its own**: right-click the
+traffic-light badges at the top left (or open the workspace menu) and choose
+**Overdue after** — 3 days, 1 week, 2 weeks, 1 month or 3 months. A board of
+long-running projects can take a month to go red while your errands still go red in
+a week; the colours keep the same proportions, just stretched.
+
 Red means it's been sitting there long enough to deserve a decision. If a note is
 still legitimately live, shake it — or right-click → *Reset age to today* — to put it back to green
 without retyping it.

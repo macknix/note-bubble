@@ -43,7 +43,7 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 
 | To change… | Go to |
 |---|---|
-| Ageing thresholds | `Model/Aging.swift` |
+| Ageing thresholds, and each board's own window (`AgeWindow`) | `Model/Aging.swift`; set from `Views/AgeWindowMenu.swift` |
 | Ageing colours, and the colour each stage stands for | `Views/AgingPalette.swift` |
 | How often ages refresh on a board left alone | `Support/AgeClock.swift` |
 | Any animation or delay, and Reduce Motion | `Support/Motion.swift` — all of them live here |
