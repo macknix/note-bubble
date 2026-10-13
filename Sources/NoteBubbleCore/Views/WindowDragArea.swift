@@ -4,7 +4,12 @@ import AppKit
 /// Lets a borderless panel be dragged by its background without swallowing clicks
 /// on the SwiftUI controls layered above it.
 struct WindowDragArea: NSViewRepresentable {
+    /// Called once AppKit's drag has finished, with the frame it started from.
+    let onDragEnded: (NSRect) -> Void
+
     final class DragView: NSView {
+        var onDragEnded: (NSRect) -> Void = { _ in }
+
         override func mouseDown(with event: NSEvent) {
             guard let window else { return }
             let before = window.frame
@@ -14,7 +19,7 @@ struct WindowDragArea: NSViewRepresentable {
             // controller gets to snap the pill to an edge and re-read its corner.
             // The frame it started from goes too, since a click that opened the
             // panel comes through here as well and is not a move.
-            (window.delegate as? PanelController)?.windowDragEnded(from: before)
+            onDragEnded(before)
         }
 
         override func hitTest(_ point: NSPoint) -> NSView? {
@@ -31,8 +36,15 @@ struct WindowDragArea: NSViewRepresentable {
         override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     }
 
-    func makeNSView(context: Context) -> NSView { DragView() }
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func makeNSView(context: Context) -> DragView {
+        let view = DragView()
+        view.onDragEnded = onDragEnded
+        return view
+    }
+
+    func updateNSView(_ view: DragView, context: Context) {
+        view.onDragEnded = onDragEnded
+    }
 }
 
 /// Hosting view that passes the first click through to its content.

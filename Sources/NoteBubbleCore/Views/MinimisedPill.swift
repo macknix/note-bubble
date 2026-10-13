@@ -14,6 +14,8 @@ struct MinimisedPill: View {
 
     @ObservedObject var store: BubbleStore
     let onExpand: () -> Void
+    /// The pill was dragged by AppKit and let go; see `WindowDragArea`.
+    let onWindowDragEnded: (NSRect) -> Void
     let onHoverChange: (Bool) -> Void
 
     @State private var hovering = false
@@ -71,7 +73,7 @@ struct MinimisedPill: View {
         .onHover { hovering = $0; onHoverChange($0) }
         .animation(Motion.hover, value: hovering)
         .onTapGesture(perform: onExpand)
-        .background(WindowDragArea())
+        .background(WindowDragArea(onDragEnded: onWindowDragEnded))
         .contextMenu {
             Button("Open") { onExpand() }
             Divider()
