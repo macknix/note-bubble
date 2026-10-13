@@ -275,6 +275,18 @@ enum BubbleStoreTests {
                         ["first", "doomed", "last, edited", "added since", "newest"],
                         "successive undos put each note back where it was")
 
+            // The toast's Undo names one action, and must not reverse a newer one.
+            store.pop(store.visible[0].id)
+            let popID = store.lastUndoID
+            var seeded = SeededGenerator(seed: 3)
+            store.shuffle(using: &seeded)
+            let shuffled = store.visible.map(\.text)
+            Check.isFalse(store.undo(ifLatest: popID!), "an offer to undo a pop is refused once a shuffle is on top")
+            Check.equal(store.visible.map(\.text), shuffled, "and changes nothing")
+            Check.isTrue(store.undo(ifLatest: store.lastUndoID!), "the newest offer still works")
+            Check.equal(store.lastUndoID, popID, "leaving the pop as the next thing to undo")
+            store.undo()
+
             // Blank throwaway notes must not occupy the undo stack.
             let (fresh, freshURL) = makeStore()
             defer { try? FileManager.default.removeItem(at: freshURL) }

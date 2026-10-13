@@ -29,6 +29,7 @@ struct RootView: View {
                 drag: drag
             )
             BubbleGrid(store: store, panelState: panelState)
+                .overlay(alignment: .bottom) { undoToast }
                 .overlay(alignment: .top) {
                     if let notice = store.fileNotice {
                         FileNoticeBanner(message: notice) {
@@ -69,6 +70,24 @@ struct RootView: View {
         }
     }
 
+    /// The toast offers to undo one particular action. Once something newer has
+    /// been recorded, its Undo would reverse that instead — so it goes. This used to
+    /// read "Popped “Milk” · Undo" over a shuffle, and undo the shuffle.
+    private var undoToast: some View {
+        ZStack {
+            if let toast = panelState.toast {
+                UndoToast(message: toast.message) {
+                    withAnimation(Motion.reflow) { _ = store.undo(ifLatest: toast.undoID) }
+                    panelState.dismissToast()
+                }
+            }
+        }
+        .animation(Motion.toast, value: panelState.toast)
+        .onChange(of: store.lastUndoID) { _, latest in
+            if let toast = panelState.toast, toast.undoID != latest { panelState.dismissToast() }
+        }
+    }
+
     /// An empty board goes without ceremony; one with notes on it asks, because
     /// this destroys more writing in a click than anything else in the app.
     private func requestDeletion(_ workspace: Workspace) {
@@ -91,6 +110,10 @@ struct RootView: View {
                 onConfirm: {
                     self.pendingDeletion = nil
                     withAnimation(Motion.reflow) { store.removeWorkspace(pendingDeletion.id) }
+                    // Undoable, and the biggest thing that is — so it says so.
+                    if let undoID = store.lastUndoID {
+                        panelState.showToast("Deleted “\(pendingDeletion.displayName)”", undoing: undoID)
+                    }
                 }
             )
         }

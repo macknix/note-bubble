@@ -678,6 +678,13 @@ another board is just as hard to find again by hand. Filing records while the st
 is still on the board the note is leaving, which is what makes undo return you to
 that board *and* that level rather than to wherever the note went.
 
+**The toast offers to undo one action, by id.** It lives in `PanelState` (so
+`RootView` can raise one for a deleted board as well as the grid for a pop or a
+filing) and carries the `BubbleStore.lastUndoID` it was raised for; its button calls
+`undo(ifLatest:)`, and it is dismissed as soon as anything newer is recorded. It used
+to call plain `undo()`, so "Popped “Milk” · Undo" clicked after a shuffle undid the
+shuffle.
+
 The two cleanup paths — `discardIfEmpty` for a never-written note and
 `discardWorkspaceIfUnused` for a never-named board — deliberately delete directly
 rather than going through them, or every stray double-click would bury a real pop
