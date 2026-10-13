@@ -25,8 +25,6 @@ enum Motion {
 
     /// How long a tile must be held before it bursts.
     static let popHold: Duration = .milliseconds(550)
-    /// Matches `popHold`, for the swell that animates alongside it.
-    static let popHoldSeconds: Double = 0.55
     /// How long the burst particles live. Slightly longer than the burst's own
     /// animation so nothing is culled mid-flight.
     static let burstLifetime: Duration = .milliseconds(500)
@@ -37,4 +35,13 @@ enum Motion {
     /// long enough that crossing one dot on the way to another doesn't flick through
     /// every board in between.
     static let workspacePreview: Duration = .milliseconds(260)
+}
+
+extension Duration {
+    /// For the animation APIs, which still count in `Double` seconds — so a delay
+    /// and the animation that runs alongside it are written once, as a `Duration`.
+    var seconds: Double {
+        let (whole, fraction) = components
+        return Double(whole) + Double(fraction) / 1e18
+    }
 }

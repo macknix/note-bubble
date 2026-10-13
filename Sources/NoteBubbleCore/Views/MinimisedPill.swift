@@ -69,7 +69,7 @@ struct MinimisedPill: View {
         .padding(3)
         .scaleEffect(hovering ? 1.04 : 1)
         .onHover { hovering = $0; onHoverChange($0) }
-        .animation(.easeOut(duration: 0.14), value: hovering)
+        .animation(Motion.hover, value: hovering)
         .onTapGesture(perform: onExpand)
         .background(WindowDragArea())
         .contextMenu {

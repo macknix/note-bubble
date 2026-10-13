@@ -434,7 +434,7 @@ struct BubbleGrid: View {
 
     /// Starts the pop countdown, and the swell that shows it filling up.
     private func beginHold(_ context: Context) {
-        withAnimation(.easeIn(duration: Motion.popHoldSeconds)) { pressProgress = 1 }
+        withAnimation(.easeIn(duration: Motion.popHold.seconds)) { pressProgress = 1 }
         popTask = Task {
             try? await Task.sleep(for: Motion.popHold)
             guard !Task.isCancelled else { return }
@@ -588,13 +588,6 @@ struct BubbleGrid: View {
         clearDragState()
     }
 
-    /// Lets a tile go.
-    ///
-    /// The destination is simply **the board you are looking at**. Hovering a dot
-    /// has already swiped the panel there, so by the time you release, the board
-    /// under the tile is the one it is going to — which is the whole point of
-    /// swiping rather than captioning it. Releasing straight onto a dot without
-    /// waiting for the swipe counts too, so an impatient drop isn't a dead one.
     /// Lets a tile go.
     ///
     /// The destination is **the board you can see** — the one you slid into view by

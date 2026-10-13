@@ -38,6 +38,8 @@ enum AgingTests {
                             expected, "\(days) days reads as \(expected)")
             }
 
+            Check.close(Motion.popHold.seconds, 0.55, "a Duration converts to seconds for the animation APIs")
+
             let node = BubbleNode(text: "x", createdAt: now.addingTimeInterval(-5 * 86_400))
             Check.close(node.ageInDays(at: now), 5, "ageInDays matches the creation date", tolerance: 0.000_1)
             Check.close(node.ageInDays(at: now.addingTimeInterval(2 * 86_400)), 7,

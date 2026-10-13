@@ -1,12 +1,5 @@
 import Foundation
 
-/// A minimal assertion harness.
-///
-/// This exists because XCTest and swift-testing both ship with Xcode, and this
-/// project deliberately builds with Command Line Tools alone — so `swift test`
-/// is not available. The suite is an ordinary executable instead: `swift run
-/// NoteBubbleTests`, non-zero exit on failure, which is all CI or a pre-commit
-/// check actually needs.
 /// Reproducible randomness, so a shuffle test asserts the same thing every run.
 /// A plain linear congruential generator — quality is irrelevant here, determinism
 /// is the whole point.
@@ -24,6 +17,13 @@ struct SeededGenerator: RandomNumberGenerator {
     }
 }
 
+/// A minimal assertion harness.
+///
+/// This exists because XCTest and swift-testing both ship with Xcode, and this
+/// project deliberately builds with Command Line Tools alone — so `swift test`
+/// is not available. The suite is an ordinary executable instead: `swift run
+/// NoteBubbleTests`, non-zero exit on failure, which is all CI or a pre-commit
+/// check actually needs.
 enum Check {
     nonisolated(unsafe) private(set) static var passed = 0
     nonisolated(unsafe) private(set) static var failures: [String] = []

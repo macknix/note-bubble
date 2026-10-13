@@ -10,7 +10,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private let panel: OverlayPanel
     private(set) var isMinimised = true
 
-    // 432pt of width is exactly three grid slots plus padding (see GridLayout).
+    // 432pt gives four columns at `GridLayout.preferredColumnWidth`, with padding.
     private static let panelWidth: CGFloat = 432
     /// The glass bar plus its margins.
     private static let headerHeight: CGFloat = 58

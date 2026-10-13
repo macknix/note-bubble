@@ -21,7 +21,8 @@ final class OverlayPanel: NSPanel {
 
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
-        isMovableByWindowBackground = false // handled by WindowDragArea
+        // Moved by `panelDraggable` on the bar, and by `WindowDragArea` on the pill.
+        isMovableByWindowBackground = false
 
         hidesOnDeactivate = false
         animationBehavior = .utilityWindow
