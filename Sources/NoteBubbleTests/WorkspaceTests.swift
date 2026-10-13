@@ -237,6 +237,25 @@ enum WorkspaceTests {
                         "without losing what was written after it went")
         }
 
+        Check.suite("Workspaces — popping something no longer in front of you") {
+            let (store, url) = makeStore()
+            defer { try? FileManager.default.removeItem(at: url) }
+
+            named(store, ["on home"])
+            let note = store.visible[0].id
+            store.addWorkspace(named: "Work")
+            store.renamingWorkspaceID = nil
+
+            // A confirmation answered after switching boards: the note is elsewhere.
+            Check.isFalse(store.pop(note), "a pop that finds nothing reports it")
+            Check.isFalse(store.canUndo, "and records nothing to undo")
+            Check.isFalse(store.pop(UUID()), "nor does popping a note that never existed")
+
+            store.selectWorkspace(at: 0)
+            Check.isTrue(store.pop(note), "back on its board, it pops")
+            Check.isTrue(store.canUndo, "and that is undoable")
+        }
+
         Check.suite("Workspaces — deleting") {
             let (store, url) = makeStore()
             defer { try? FileManager.default.removeItem(at: url) }
