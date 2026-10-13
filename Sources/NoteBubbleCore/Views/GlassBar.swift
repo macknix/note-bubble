@@ -20,7 +20,6 @@ struct GlassBar: View {
     @ObservedObject var panelState: PanelState
     @ObservedObject private var sounds = PopSounds.shared
 
-    let isPinned: Bool
     let onTogglePin: () -> Void
     let onClose: () -> Void
     let onDeleteWorkspace: (Workspace) -> Void
@@ -109,9 +108,9 @@ struct GlassBar: View {
             ) { sounds.isMuted.toggle() }
 
             GlassIconButton(
-                systemImage: isPinned ? "pin.fill" : "pin",
-                help: isPinned ? "Unpin — fold away when the pointer leaves" : "Pin — stay open",
-                tint: isPinned ? BarStyle.candyPink : nil,
+                systemImage: panelState.isPinned ? "pin.fill" : "pin",
+                help: panelState.isPinned ? "Unpin — fold away when the pointer leaves" : "Pin — stay open",
+                tint: panelState.isPinned ? BarStyle.candyPink : nil,
                 action: onTogglePin
             )
 

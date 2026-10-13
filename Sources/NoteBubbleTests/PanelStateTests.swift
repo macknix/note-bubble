@@ -35,6 +35,11 @@ enum PanelStateTests {
             state.forgetView()
             Check.equal(state.holds, [.panelDrag], "a replaced view's holds go with it")
             Check.isFalse(state.isDraggingTile, "as does its drag")
+
+            // Pinning belongs to the panel, not the view, so a view swap keeps it.
+            state.isPinned = true
+            state.forgetView()
+            Check.isTrue(state.isPinned, "pinning survives the view being replaced")
         }
     }
 }

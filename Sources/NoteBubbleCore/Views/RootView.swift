@@ -6,7 +6,6 @@ struct RootView: View {
     @ObservedObject var panelState: PanelState
     let onClose: () -> Void
     let onHoverChange: (Bool) -> Void
-    let isPinned: Bool
     let onTogglePin: () -> Void
     let drag: PanelDrag
 
@@ -24,7 +23,6 @@ struct RootView: View {
             GlassBar(
                 store: store,
                 panelState: panelState,
-                isPinned: isPinned,
                 onTogglePin: onTogglePin,
                 onClose: onClose,
                 onDeleteWorkspace: requestDeletion,

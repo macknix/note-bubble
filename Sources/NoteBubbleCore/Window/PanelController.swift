@@ -291,7 +291,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         collapseTask?.cancel()
         expandTask?.cancel()
         isMinimised = true
-        isPinned = false
+        panelState.isPinned = false
         store.editingID = nil
         store.renamingWorkspaceID = nil
         swipe.reset()
@@ -312,7 +312,6 @@ final class PanelController: NSObject, NSWindowDelegate {
     /// full alpha because window alpha fades *everything*, and the tiles are
     /// supposed to read as solid objects over your work.
     private static let idleAlpha: CGFloat = 0.55
-    private var isPinned = false
 
     private var expandedView: RootView {
         RootView(
@@ -320,7 +319,6 @@ final class PanelController: NSObject, NSWindowDelegate {
             panelState: panelState,
             onClose: { [weak self] in self?.close() },
             onHoverChange: { [weak self] hovering in self?.setHovering(hovering) },
-            isPinned: isPinned,
             onTogglePin: { [weak self] in self?.togglePin() },
             drag: PanelDrag(
                 began: { [weak self] in self?.beginPanelDrag() },
@@ -375,7 +373,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
 
         // Expanded is always fully opaque; only the pill fades when unattended.
-        let solid = !isMinimised || hovering || isPinned || store.isEditing
+        let solid = !isMinimised || hovering || panelState.isPinned || store.isEditing
         fade(to: solid ? 1.0 : Self.idleAlpha, quickly: hovering)
 
         if hovering {
@@ -410,13 +408,13 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func scheduleCollapse() {
-        guard !isMinimised, !isPinned else { return }
+        guard !isMinimised, !panelState.isPinned else { return }
         collapseTask?.cancel()
         collapseTask = Task { [weak self] in
             try? await Task.sleep(for: Self.collapseDelay)
             guard !Task.isCancelled, let self else { return }
             // Re-check at fire time: any of these may have become true while waiting.
-            guard !self.isPinned,
+            guard !self.panelState.isPinned,
                   !self.store.isEditing,
                   !self.panelState.blocksAutoCollapse
             else { return }
@@ -424,12 +422,11 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
     }
 
-    /// Pinned means "stay open" — for when you are actually working in the panel
-    /// rather than glancing at it.
+    /// Pinned means "stay open". Only the state flips — the bar is watching it, so
+    /// nothing has to be rebuilt to show it.
     private func togglePin() {
-        isPinned.toggle()
+        panelState.isPinned.toggle()
         collapseTask?.cancel()
-        show(expandedView, sized: expandedSize)
         fade(to: 1.0, quickly: true)
     }
 
@@ -438,7 +435,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         collapseTask?.cancel()
         expandTask?.cancel()
         isMinimised = true
-        isPinned = false
+        panelState.isPinned = false
         store.editingID = nil
         store.renamingWorkspaceID = nil
         // A swipe left half-finished when the panel folded away must not be picked
