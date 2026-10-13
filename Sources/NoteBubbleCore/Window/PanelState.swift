@@ -27,6 +27,14 @@ final class PanelState: ObservableObject {
         static let viewOwned: Set<Hold> = [.tileDrag, .popConfirmation, .workspaceDeletion]
     }
 
+    /// Pinned means "stay open" — for when you are actually working in the panel
+    /// rather than glancing at it.
+    ///
+    /// Published state rather than a value handed to the view, because toggling a
+    /// value handed in meant rebuilding the whole view to show it — which threw away
+    /// the undo toast, any open confirmation and the scroll position with it.
+    @Published var isPinned = false
+
     /// Everything currently holding the panel open.
     ///
     /// A set of named reasons rather than one flag, because there are four owners
