@@ -38,29 +38,61 @@ final class OverlayPanel: NSPanel {
     /// had its go — ⌘← inside a note still means "start of line" and never reaches
     /// here.
     override func keyDown(with event: NSEvent) {
-        if event.modifierFlags.contains(.command) {
-            switch event.charactersIgnoringModifiers {
-            case "w", "m": (delegate as? PanelController)?.minimise(); return
-            case "q": NSApp.terminate(nil); return
-            case "n": (delegate as? PanelController)?.newBubble(); return
-            // ⇧ makes it a new *workspace*: `charactersIgnoringModifiers` keeps the
-            // shift, so the capital is the whole test.
-            case "N": (delegate as? PanelController)?.newWorkspace(); return
-            case "z": (delegate as? PanelController)?.undo(); return
-            default: break
-            }
-
-            // Paging between workspaces, in the direction the arrows point.
-            switch event.keyCode {
-            case 123: (delegate as? PanelController)?.previousWorkspace(); return
-            case 124: (delegate as? PanelController)?.nextWorkspace(); return
-            default: break
-            }
-        }
-        if event.keyCode == 53 { // Escape
-            (delegate as? PanelController)?.escape()
+        let shortcut = PanelShortcut.match(
+            characters: event.charactersIgnoringModifiers,
+            keyCode: event.keyCode,
+            command: event.modifierFlags.contains(.command),
+            shift: event.modifierFlags.contains(.shift)
+        )
+        guard let shortcut else {
+            super.keyDown(with: event)
             return
         }
-        super.keyDown(with: event)
+        let controller = delegate as? PanelController
+        switch shortcut {
+        case .minimise: controller?.minimise()
+        case .quit: NSApp.terminate(nil)
+        case .newBubble: controller?.newBubble()
+        case .newWorkspace: controller?.newWorkspace()
+        case .undo: controller?.undo()
+        case .previousWorkspace: controller?.previousWorkspace()
+        case .nextWorkspace: controller?.nextWorkspace()
+        case .escape: controller?.escape()
+        }
+    }
+}
+
+/// Which panel command a key press means, decided without AppKit so it can be tested.
+enum PanelShortcut: Equatable {
+    case minimise, quit, newBubble, newWorkspace, undo
+    case previousWorkspace, nextWorkspace
+    case escape
+
+    private static let escapeKey: UInt16 = 53
+    private static let leftArrow: UInt16 = 123
+    private static let rightArrow: UInt16 = 124
+
+    /// Letters are matched case-insensitively and Shift is read from the modifier
+    /// flags, never from the letter's case. Telling ⌘N from ⌘⇧N by whether the
+    /// character came out as "N" made Caps Lock turn every new note into a new
+    /// workspace.
+    static func match(characters: String?, keyCode: UInt16, command: Bool, shift: Bool) -> PanelShortcut? {
+        if keyCode == escapeKey { return .escape }
+        guard command else { return nil }
+
+        switch keyCode {
+        case leftArrow: return .previousWorkspace
+        case rightArrow: return .nextWorkspace
+        default: break
+        }
+
+        switch (characters?.lowercased(), shift) {
+        case ("w", false), ("m", false): return .minimise
+        case ("q", false): return .quit
+        case ("n", false): return .newBubble
+        case ("n", true): return .newWorkspace
+        case ("z", false): return .undo
+        default: return nil
+        }
     }
 }
