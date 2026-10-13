@@ -66,7 +66,7 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | The workspace dots — the swipe's affordance, and the drop targets | `Views/WorkspaceDots.swift` |
 | What another board looks like mid-drag | `Views/WorkspacePreview.swift` |
 | Menu bar icon and its menu | `Window/MenuBarItem.swift` |
-| What a tile looks like | `Views/BubbleTile.swift` |
+| What a tile looks like | `Views/TileFace.swift` (`BubbleTile` adds hover, rename and the editor) |
 | Tap / hold / drag behaviour | `Support/TileGesture.swift` decides; `Views/BubbleGrid+Drag.swift` carries it out |
 | Note data, undo | `Model/BubbleStore.swift` |
 | Reading and writing `bubbles.json`, backups | `Model/BubbleFile.swift` |
@@ -148,7 +148,7 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
                            HoverIntent, PreviewDwell
   Views/                   RootView, GlassBar, BarStyle, BarButtons, StatusHandle,
                            WorkspaceChip, WorkspaceDots, WorkspacePreview,
-                           BubbleGrid (+Drag, +Preview, +Pop), BubbleTile,
+                           BubbleGrid (+Drag, +Preview, +Pop), BubbleTile, TileFace,
                            TileStyle, PopBurst,
                            ConfirmSheet, ConfirmPopSheet, UndoToast, FileNoticeBanner,
                            AgingPalette,

@@ -12,23 +12,14 @@ struct WorkspacePreview: View {
     let now: Date
 
     var body: some View {
-        let specs = workspace.notes.map { TileSizeCache.spec(for: $0, in: layout) }
-        let frames = layout.frames(for: specs)
+        // The same plan the grid builds, so a previewed board packs exactly as it
+        // will once you are on it.
+        let plan = LayoutPlan(nodes: workspace.notes, layout: layout)
 
         ZStack(alignment: .topLeading) {
             ForEach(Array(workspace.notes.enumerated()), id: \.element.id) { index, node in
-                BubbleTile(
-                    node: node,
-                    size: specs[index].size,
-                    now: now,
-                    isEditing: false,
-                    isDragging: false,
-                    pressProgress: 0,
-                    onCommit: { _ in },
-                    onFinish: {},
-                    onRename: {}
-                )
-                .position(x: frames[index].midX, y: frames[index].midY)
+                TileFace(node: node, size: plan.size(at: index), now: now)
+                    .position(plan.restingCentre(at: index))
             }
         }
         .allowsHitTesting(false)
