@@ -23,6 +23,9 @@ concurrency:
 jobs:
   release:
     runs-on: macos-15
+    env:
+      # Secrets cannot be tested in a step's `if`; whether one is set can.
+      HAS_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,3 +65,22 @@ jobs:
             --generate-notes \
             ${previous:+--notes-start-tag "$previous"} \
             --verify-tag
+
+      # Keeps `brew install --cask macknix/tap/note-bubble` on the latest release.
+      # Off until a token that can push to macknix/homebrew-tap is saved as the
+      # HOMEBREW_TAP_TOKEN secret — see Packaging/homebrew/README.md.
+      - name: Update the Homebrew tap
+        if: github.ref_type == 'tag' && env.HAS_TAP_TOKEN == 'true'
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/macknix/homebrew-tap.git" tap
+          mkdir -p tap/Casks
+          ./Scripts/render-cask.sh "$version" "dist/NoteBubble-$version.zip" > tap/Casks/note-bubble.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/note-bubble.rb
+          git commit -m "note-bubble $version"
+          git push

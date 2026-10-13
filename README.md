@@ -18,7 +18,13 @@ Requires **macOS 14 or later**. Apple silicon or Intel.
 
 ## Download
 
-Get the latest **`NoteBubble-<version>.dmg`** from
+With [Homebrew](https://brew.sh):
+
+```bash
+brew install --cask macknix/tap/note-bubble
+```
+
+Or download the latest **`NoteBubble-<version>.dmg`** from
 [Releases](https://github.com/macknix/note-bubble/releases/latest), open it, and
 drag Note Bubble into Applications. One download runs on Apple silicon and Intel.
 
