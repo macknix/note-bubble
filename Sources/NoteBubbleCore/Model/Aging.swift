@@ -41,8 +41,8 @@ enum Aging {
         Color(hue: 0.33 * (1 - progress(forDays: days)), saturation: 0.88, brightness: 0.66)
     }
 
-    static func relativeAge(from date: Date) -> String {
-        let days = Int(Date().timeIntervalSince(date) / 86_400)
+    static func relativeAge(from date: Date, now: Date) -> String {
+        let days = Int(now.timeIntervalSince(date) / 86_400)
         switch days {
         case ..<1: return "today"
         case 1: return "yesterday"

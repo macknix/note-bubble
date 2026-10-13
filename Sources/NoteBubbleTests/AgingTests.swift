@@ -20,15 +20,18 @@ enum AgingTests {
             for (a, b) in zip(samples, samples.dropFirst()) where a == b { allDistinct = false }
             Check.isTrue(allDistinct, "colour keeps changing across the week")
 
-            let now = Date()
-            Check.equal(Aging.relativeAge(from: now), "today", "today reads as today")
-            Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-86_400)), "yesterday", "one day reads as yesterday")
-            Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-3 * 86_400)), "3d", "days are abbreviated")
-            Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-14 * 86_400)), "2w", "two weeks reads as 2w")
-            Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-60 * 86_400)), "2mo", "two months reads as 2mo")
+            // A fixed instant: ages are measured against a clock that is passed in.
+            let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+            Check.equal(Aging.relativeAge(from: now, now: now), "today", "today reads as today")
+            Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-86_400), now: now), "yesterday", "one day reads as yesterday")
+            Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-3 * 86_400), now: now), "3d", "days are abbreviated")
+            Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-14 * 86_400), now: now), "2w", "two weeks reads as 2w")
+            Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-60 * 86_400), now: now), "2mo", "two months reads as 2mo")
 
             let node = BubbleNode(text: "x", createdAt: now.addingTimeInterval(-5 * 86_400))
-            Check.close(node.ageInDays, 5, "ageInDays matches the creation date", tolerance: 0.01)
+            Check.close(node.ageInDays(at: now), 5, "ageInDays matches the creation date", tolerance: 0.000_1)
+            Check.close(node.ageInDays(at: now.addingTimeInterval(2 * 86_400)), 7,
+                        "and moves on with the clock it is given", tolerance: 0.000_1)
         }
     }
 }

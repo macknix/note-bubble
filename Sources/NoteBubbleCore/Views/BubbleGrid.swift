@@ -189,6 +189,7 @@ struct BubbleGrid: View {
             BubbleTile(
                 node: cargo.node,
                 size: cargo.size,
+                now: store.now,
                 isEditing: false,
                 isDragging: true,
                 pressProgress: 0,
@@ -235,7 +236,7 @@ struct BubbleGrid: View {
     @ViewBuilder
     private func previewLayer(layout: GridLayout) -> some View {
         if previewWorkspace != nil {
-            WorkspacePreview(workspace: shownWorkspace, layout: layout)
+            WorkspacePreview(workspace: shownWorkspace, layout: layout, now: store.now)
                 .id(shownWorkspace.id)
                 // It arrives from the side it lives on and leaves the same way, which
                 // is what makes previewing feel like moving along the shelf of boards
@@ -328,6 +329,7 @@ struct BubbleGrid: View {
         return BubbleTile(
             node: node,
             size: size,
+            now: store.now,
             isEditing: isEditing,
             isDragging: isDragging,
             pressProgress: tileGesture.isPressed(node.id) ? pressProgress : 0,
@@ -637,7 +639,7 @@ struct BubbleGrid: View {
             centre: plan.restingCentre(at: index),
             size: size,
             cornerRadius: TileStyle.cornerRadius(for: size),
-            color: Aging.color(forDays: node.ageInDays)
+            color: Aging.color(forDays: node.ageInDays(at: store.now))
         )
 
         bursts.append(burst)

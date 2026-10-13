@@ -9,6 +9,7 @@ import SwiftUI
 struct WorkspacePreview: View {
     let workspace: Workspace
     let layout: GridLayout
+    let now: Date
 
     var body: some View {
         let specs = workspace.notes.map { TileSizeCache.spec(for: $0, in: layout) }
@@ -19,6 +20,7 @@ struct WorkspacePreview: View {
                 BubbleTile(
                     node: node,
                     size: specs[index].size,
+                    now: now,
                     isEditing: false,
                     isDragging: false,
                     pressProgress: 0,

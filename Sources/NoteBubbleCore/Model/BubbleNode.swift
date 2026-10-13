@@ -22,9 +22,13 @@ struct BubbleNode: Identifiable, Codable, Hashable {
         text.isEmpty ? "Untitled" : text
     }
 
-    /// Whole days since the note was written. Drives the traffic-light colour.
-    var ageInDays: Double {
-        Date().timeIntervalSince(createdAt) / 86_400
+    /// Days since the note was written, as of `now`. Drives the traffic-light colour.
+    ///
+    /// `now` is passed in rather than read from the system clock, so that the age
+    /// shown changes when the store's clock ticks — see `BubbleStore.now` — and so
+    /// tests can say exactly what time it is.
+    func ageInDays(at now: Date) -> Double {
+        now.timeIntervalSince(createdAt) / 86_400
     }
 
     /// Total notes contained below this one, at any depth.

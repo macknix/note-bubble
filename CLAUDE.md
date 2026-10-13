@@ -41,6 +41,7 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | To change… | Go to |
 |---|---|
 | Colours / ageing thresholds | `Model/Aging.swift` |
+| How often ages refresh on a board left alone | `Support/AgeClock.swift` |
 | Any animation or delay | `Support/Motion.swift` — all of them live here |
 | Tile sizing, column count, packing | `Layout/GridLayout.swift` |
 | Where every tile sits for one render | `Layout/LayoutPlan.swift` |
@@ -135,7 +136,7 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
   Audio/                   PopSounds
   Model/                   BubbleNode, BubbleStore, BubbleFile, Workspace, Aging
   Layout/                  GridLayout, LayoutPlan, TileText, TileSizeCache
-  Support/                 Motion, TileGesture, TileFlight, WorkspaceSwipe
+  Support/                 Motion, TileGesture, TileFlight, WorkspaceSwipe, AgeClock
   Views/                   RootView, GlassBar, BarStyle, BarButtons, StatusHandle,
                            WorkspaceChip, WorkspaceDots, WorkspacePreview,
                            BubbleGrid, BubbleTile, TileStyle, PopBurst,
@@ -804,6 +805,17 @@ material, tiles and shadows fade as one.
 note decays smoothly rather than jumping between three colours. `Aging.Stage`
 (fresh / aging / overdue) exists only where a hard answer is needed — currently
 the overdue count on the minimised pill.
+
+**Ages are measured against `BubbleStore.now`, never `Date()`.** A view only
+re-renders when something changes, and on a widget left alone for days nothing
+does — ages read off the system clock at render time froze at the last edit, so a
+note could go overdue overnight and the pill still say green. `now` is `@Published`;
+`Support/AgeClock` advances it every ten minutes, on wake, at midnight and when the
+system clock changes, which re-renders every tile and count and refreshes the menu
+bar badge. So `ageInDays(at:)`, `relativeAge(from:now:)`, `overdueCount(at:)` and
+`worstStage(at:)` all take the time explicitly — which is also what lets the tests
+say exactly what time it is. Anything that stamps a note with the real time (`addBubble`,
+`touch`) calls `advanceClock()` too, so a fresh note never reads as from the future.
 
 ### App lifecycle
 
