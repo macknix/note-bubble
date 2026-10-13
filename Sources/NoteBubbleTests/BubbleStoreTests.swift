@@ -289,6 +289,88 @@ enum BubbleStoreTests {
             let missing = URL(fileURLWithPath: NSTemporaryDirectory())
                 .appendingPathComponent("absent-\(UUID().uuidString).json")
             Check.isTrue(BubbleStore(fileURL: missing).root.isEmpty, "a missing file loads empty")
+            Check.nil_(BubbleStore(fileURL: missing).fileNotice, "and a first launch says nothing about it")
+        }
+
+        unusableFiles()
+    }
+
+    /// A folder of its own, since setting a file aside writes a sibling beside it.
+    private static func makeFolder() -> URL {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("notebubble-file-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder
+    }
+
+    private static func contents(of folder: URL) -> [String] {
+        ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).sorted()
+    }
+
+    private static func unusableFiles() {
+        Check.suite("BubbleStore — a file it cannot use is never saved over") {
+            let folder = makeFolder()
+            defer { try? FileManager.default.removeItem(at: folder) }
+            let url = folder.appendingPathComponent("bubbles.json")
+            let garbage = Data("{ \"workspaces\": [ { not json".utf8)
+            try? garbage.write(to: url)
+
+            let store = BubbleStore(fileURL: url)
+            Check.isTrue(store.root.isEmpty, "an unreadable file opens on an empty board")
+            Check.isTrue(store.fileNotice != nil, "and says so")
+
+            let asideName = contents(of: folder).first { $0.hasPrefix("bubbles.unreadable-") }
+            Check.isTrue(asideName != nil, "the unreadable file is set aside beside the original")
+            let aside = asideName.map { folder.appendingPathComponent($0) }
+            Check.equal(aside.flatMap { try? Data(contentsOf: $0) }, garbage,
+                        "byte for byte")
+
+            store.addBubble(text: "new")
+            store.saveNow()
+            Check.equal(aside.flatMap { try? Data(contentsOf: $0) }, garbage,
+                        "and saving afterwards leaves it alone")
+            Check.equal(BubbleStore(fileURL: url).visible.map(\.text), ["new"],
+                        "while new notes save normally")
+        }
+
+        Check.suite("BubbleStore — a file from a newer build is left untouched") {
+            let folder = makeFolder()
+            defer { try? FileManager.default.removeItem(at: folder) }
+            let url = folder.appendingPathComponent("bubbles.json")
+            let future = Data("{ \"version\": 99, \"boards\": [] }".utf8)
+            try? future.write(to: url)
+
+            let store = BubbleStore(fileURL: url)
+            Check.isTrue(store.fileNotice != nil, "a newer file is reported")
+            Check.equal(contents(of: folder), ["bubbles.json"], "and is not moved")
+
+            store.addBubble(text: "would overwrite")
+            store.saveNow()
+            Check.equal(try? Data(contentsOf: url), future, "nothing in this session saves over it")
+
+            store.dismissFileNotice()
+            Check.nil_(store.fileNotice, "the notice can be dismissed")
+        }
+
+        Check.suite("BubbleStore — the first save of a session keeps a backup") {
+            let folder = makeFolder()
+            defer { try? FileManager.default.removeItem(at: folder) }
+            let url = folder.appendingPathComponent("bubbles.json")
+
+            let first = BubbleStore(fileURL: url)
+            first.addBubble(text: "yesterday")
+            first.saveNow()
+            let before = try? Data(contentsOf: url)
+
+            let second = BubbleStore(fileURL: url)
+            second.addBubble(text: "today")
+            second.saveNow()
+            second.addBubble(text: "later today")
+            second.saveNow()
+
+            let backup = url.appendingPathExtension("bak")
+            Check.equal(try? Data(contentsOf: backup), before,
+                        "the backup is the file as the session found it, not as it last saved")
         }
     }
 }

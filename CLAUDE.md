@@ -60,7 +60,8 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | Menu bar icon and its menu | `Window/MenuBarItem.swift` |
 | What a tile looks like | `Views/BubbleTile.swift` |
 | Tap / hold / drag behaviour | `Support/TileGesture.swift` decides; `Views/BubbleGrid.swift` carries it out |
-| Note data, undo, persistence | `Model/BubbleStore.swift` |
+| Note data, undo | `Model/BubbleStore.swift` |
+| Reading and writing `bubbles.json`, backups | `Model/BubbleFile.swift` |
 | Asking before something destructive | `Views/ConfirmSheet.swift` |
 | App icon artwork | `Scripts/make-icon.swift` |
 
@@ -89,8 +90,13 @@ Notes persist to `~/Library/Application Support/NoteBubble/bubbles.json`, as
 `{ version, workspaces, currentID }`. A file from before workspaces existed is a
 bare `[BubbleNode]` array; it is recognised by shape, lifted into a single board
 named "Notes", and rewritten in the current form on the next save — so there is no
-migration step to run, but **an old build will not read a new file**. Delete that
-file to reset, or use the demo board above rather than hand-editing dates.
+migration step to run, but **an old build will not read a new file** — it refuses it
+outright (`BubbleDocument.Failure.tooNew`) and saves nothing for the session.
+**A file that cannot be used is never treated as empty**: `BubbleFile` sets an
+undecodable one aside as `bubbles.unreadable-<date>.json`, and `BubbleStore` raises
+`fileNotice` for the panel. Treating it as empty is what used to let the next
+keystroke save an empty board over it. The first save of each launch copies the
+file to `bubbles.json.bak` first. Delete `bubbles.json` to reset, or use the demo board above rather than hand-editing dates.
 The app holds the tree in memory and writes on change, so quit it before replacing
 that file or it will overwrite you on its next save — `demo-data.py` refuses to
 install while it is running for exactly that reason.
@@ -127,14 +133,14 @@ Sources/NoteBubble/        main.swift only — calls NoteBubbleApp.launch()
 Sources/NoteBubbleCore/    everything real, so the tests can import it
   App/                     NoteBubbleApp (public entry point), AppDelegate
   Audio/                   PopSounds
-  Model/                   BubbleNode, BubbleStore, Workspace, Aging
+  Model/                   BubbleNode, BubbleStore, BubbleFile, Workspace, Aging
   Layout/                  GridLayout, LayoutPlan, TileText, TileSizeCache
   Support/                 Motion, TileGesture, TileFlight, WorkspaceSwipe
   Views/                   RootView, GlassBar, BarStyle, BarButtons, StatusHandle,
                            WorkspaceChip, WorkspaceDots, WorkspacePreview,
                            BubbleGrid, BubbleTile, TileStyle, PopBurst,
-                           ConfirmSheet, ConfirmPopSheet, UndoToast, MinimisedPill,
-                           WindowDragArea
+                           ConfirmSheet, ConfirmPopSheet, UndoToast, FileNoticeBanner,
+                           MinimisedPill, WindowDragArea
   Window/                  OverlayPanel, PanelController, PanelParking,
                            PanelPlacement, PanelState, PanelDrag, MenuBarItem,
                            HotKey

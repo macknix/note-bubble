@@ -213,6 +213,12 @@ existed is read as it always was and lifted into a single board called *Notes*, 
 upgrading takes nothing on your part — but once it has been saved in the new shape,
 an older build will not read it.
 
+A file Note Bubble can't use is never saved over. If it can't be read — a slip while
+hand-editing, say — it is moved aside as `bubbles.unreadable-<date>.json` and the
+panel tells you so. If it was written by a newer version, it is left exactly where it
+is and nothing is saved until you update. The first save of each launch also keeps a
+copy of how the file stood before, as `bubbles.json.bak`.
+
 ## Development
 
 ```bash
