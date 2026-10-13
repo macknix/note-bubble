@@ -16,11 +16,32 @@ they get old, and pop when the task is done.
 
 Requires **macOS 14 or later**. Apple silicon or Intel.
 
-## Install
+## Download
 
-Note Bubble isn't code-signed with an Apple Developer certificate, so building it
-yourself is the path of least resistance — it takes one command and needs no Xcode,
-only the Command Line Tools that `git` already pulled in.
+Get the latest **`NoteBubble-<version>.dmg`** from
+[Releases](https://github.com/macknix/note-bubble/releases/latest), open it, and
+drag Note Bubble into Applications. One download runs on Apple silicon and Intel.
+
+**The first launch needs one extra step.** Note Bubble isn't notarised by Apple, so
+macOS stops it the first time with *"Apple could not verify 'Note Bubble' is free of
+malware"*. It's the warning macOS shows for every app that isn't from the App Store
+or a paid Apple developer account. To let it through:
+
+1. Open Note Bubble once and dismiss the warning.
+2. Go to **System Settings → Privacy & Security**, scroll down, and click
+   **Open Anyway** next to Note Bubble.
+
+Or, from Terminal: `xattr -dr com.apple.quarantine "/Applications/Note Bubble.app"`.
+Either way, macOS remembers, and it opens normally from then on.
+
+Each release lists SHA-256 checksums in `SHA256SUMS.txt` if you want to check the
+download: `shasum -a 256 -c SHA256SUMS.txt`.
+
+## Build from source
+
+Building it yourself avoids the warning entirely, since locally built apps are never
+quarantined. It takes one command and needs no Xcode, only the Command Line Tools
+that `git` already pulled in.
 
 ```bash
 git clone https://github.com/macknix/note-bubble.git
@@ -33,14 +54,6 @@ If `swift` isn't found, run `xcode-select --install` first.
 
 To keep it: drag `build/Note Bubble.app` into `/Applications`, then add it to
 **System Settings → General → Login Items** so it's there every morning.
-
-> **Downloading a prebuilt copy instead?** macOS quarantines apps from the internet
-> that aren't notarised, and will say Note Bubble is damaged. It isn't — that's
-> Gatekeeper refusing an unsigned app. Either right-click the app and choose
-> **Open**, or clear the flag:
-> `xattr -dr com.apple.quarantine "/Applications/Note Bubble.app"`.
-> Building from source avoids this entirely, because locally built apps are never
-> quarantined.
 
 Nothing leaves your machine: no accounts, no network, no telemetry. Notes are a
 plain JSON file in your own Application Support folder.

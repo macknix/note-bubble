@@ -19,6 +19,7 @@ swift run NoteBubbleTests        # run the test suite
 ./Scripts/build-app.sh debug     # same, debug configuration
 VERSION=v1.2.0 ./Scripts/build-app.sh  # stamp an explicit version (CI does this from the tag)
 ./Scripts/package.sh             # release build → dist/: .dmg, .zip, SHA256SUMS.txt
+git tag v1.2.0 && git push origin v1.2.0   # publish a GitHub Release (.github/workflows/release.yml)
 open "build/Note Bubble.app"     # launch
 pkill -f "Note Bubble.app"       # quit (there is no Dock icon to right-click)
 

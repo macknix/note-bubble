@@ -1,0 +1,64 @@
+name: Release
+
+# Pushing a version tag publishes a GitHub Release with the DMG, the zip and their
+# checksums attached:
+#
+#   git tag v1.2.0 && git push origin v1.2.0
+#
+# Running it by hand from the Actions tab builds and packages exactly the same way
+# but publishes nothing — the files are attached to the run as an artifact — which
+# is how to check a release before cutting one.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # build-app.sh counts commits for the build number and reads tags for
+          # the version; a shallow clone has neither.
+          fetch-depth: 0
+
+      - name: Test
+        run: swift run -Xswiftc -warnings-as-errors NoteBubbleTests
+
+      - name: Package
+        env:
+          # The tag being released; on a manual run, whatever the latest tag is.
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          ./Scripts/package.sh
+          (cd dist && shasum -a 256 -c SHA256SUMS.txt)
+          lipo -archs "build/Note Bubble.app/Contents/MacOS/NoteBubble"
+
+      - name: Keep the files from a dry run
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: note-bubble-dry-run
+          path: dist/
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Notes run from the previous version tag, or from the beginning for
+          # the first release.
+          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$GITHUB_REF_NAME^" 2>/dev/null || true)"
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Note Bubble ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            ${previous:+--notes-start-tag "$previous"} \
+            --verify-tag
