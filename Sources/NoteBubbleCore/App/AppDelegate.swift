@@ -7,11 +7,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var store: BubbleStore!
     private var controller: PanelController!
     private var hotKey: HotKey?
+    private var ageClock: AgeClock?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         store = BubbleStore()
         controller = PanelController(store: store)
         hotKey = HotKey { [weak self] in self?.controller.toggleVisible() }
+        ageClock = AgeClock { [weak self] in self?.store.advanceClock() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

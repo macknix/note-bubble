@@ -236,12 +236,29 @@ final class BubbleStore: ObservableObject {
     /// height to the panel, and the two must never disagree about whether it's there.
     var showsPlaceRow: Bool { !isAtRoot || hasMultipleWorkspaces }
 
+    /// The time every age in the app is measured against.
+    ///
+    /// Held here rather than read from the system clock at render time, because a
+    /// render only happens when something changes — and on a widget left alone for
+    /// days, nothing does. Ages read straight off `Date()` froze at whatever the last
+    /// edit was: a note could go overdue overnight and the pill still say green.
+    /// `AgeClock` advances this as time passes; being `@Published`, that re-renders
+    /// every tile and count and refreshes the menu bar badge.
+    @Published private(set) var now = Date()
+
+    /// Moves `now` on. Called by `AgeClock`, and by anything that stamps a note with
+    /// the real time, so that note never reads as written in the future.
+    func advanceClock(to date: Date = Date()) {
+        guard date > now else { return }
+        now = date
+    }
+
     /// How the whole tree is distributed across the traffic lights. Drives the
     /// status handle in the top bar, which is the only place all three are shown.
     var stageCounts: (fresh: Int, aging: Int, overdue: Int) {
         var counts = (fresh: 0, aging: 0, overdue: 0)
         for note in root.flattened {
-            switch Aging.stage(forDays: note.ageInDays) {
+            switch Aging.stage(forDays: note.ageInDays(at: now)) {
             case .fresh: counts.fresh += 1
             case .aging: counts.aging += 1
             case .overdue: counts.overdue += 1
@@ -260,7 +277,7 @@ final class BubbleStore: ObservableObject {
     var everywhere: (notes: Int, overdue: Int) {
         workspaces.reduce(into: (notes: 0, overdue: 0)) { totals, workspace in
             totals.notes += workspace.notes.flattened.count
-            totals.overdue += workspace.overdueCount
+            totals.overdue += workspace.overdueCount(at: now)
         }
     }
 
@@ -462,6 +479,7 @@ final class BubbleStore: ObservableObject {
     /// Adds an empty bubble at the current level and puts it straight into edit mode.
     @discardableResult
     func addBubble(text: String = "") -> UUID {
+        advanceClock()
         let node = BubbleNode(text: text)
         currentNotes.mutateChildren(at: path[...]) { $0.append(node) }
         editingID = node.id
@@ -563,6 +581,7 @@ final class BubbleStore: ObservableObject {
             guard let index = children.firstIndex(where: { $0.id == id }) else { return }
             children[index].createdAt = Date()
         }
+        advanceClock()
         scheduleSave()
     }
 

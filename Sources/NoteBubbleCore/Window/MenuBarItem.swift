@@ -150,7 +150,7 @@ final class MenuBarItem {
     /// Overdue is called out here because the badge above only counts the board
     /// that is open — this is where the others get to say they are rotting.
     private func title(for workspace: Workspace) -> String {
-        let overdue = workspace.overdueCount
+        let overdue = workspace.overdueCount(at: store.now)
         return overdue > 0 ? "\(workspace.displayName) — \(overdue) overdue" : workspace.displayName
     }
 

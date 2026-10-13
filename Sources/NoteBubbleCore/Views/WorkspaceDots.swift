@@ -89,7 +89,7 @@ struct WorkspaceDots: View {
     /// Empty boards stay grey: a dot with no notes behind it has nothing to warn
     /// about, and colouring it green would claim otherwise.
     private func colour(for workspace: Workspace, isCurrent: Bool) -> Color {
-        guard let stage = workspace.worstStage else {
+        guard let stage = workspace.worstStage(at: store.now) else {
             return .white.opacity(isCurrent ? 0.5 : 0.2)
         }
         let days: Double = switch stage {
@@ -110,7 +110,7 @@ struct WorkspaceDots: View {
     private func summary(for workspace: Workspace) -> String {
         let count = workspace.notes.flattened.count
         let notes = count == 1 ? "1 bubble" : "\(count) bubbles"
-        let overdue = workspace.overdueCount
+        let overdue = workspace.overdueCount(at: store.now)
         return overdue > 0
             ? "\(workspace.displayName) — \(notes), \(overdue) overdue"
             : "\(workspace.displayName) — \(notes)"
