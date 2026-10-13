@@ -36,8 +36,6 @@ struct BubbleGrid: View {
 
     @State private var bursts: [PopBurst] = []
     @State private var pendingPop: PendingPop?
-    @State private var toast: String?
-    @State private var toastTask: Task<Void, Never>?
 
     // MARK: - Dropping onto another workspace
 
@@ -130,7 +128,6 @@ struct BubbleGrid: View {
             // The tile in hand is drawn *here*, outside the scroll view, so it can
             // be carried up over the bar — see `liftedTile`.
             .overlay(alignment: .topLeading) { liftedTile }
-            .overlay(alignment: .bottom) { if let toast { UndoToast(message: toast, onUndo: undo) } }
             .overlay { confirmation }
             .coordinateSpace(name: Self.viewportSpace)
             .onPreferenceChange(GridOffsetsKey.self) { offsets = $0 }
@@ -689,25 +686,11 @@ struct BubbleGrid: View {
 
     // MARK: - Toast
 
-    private func undo() {
-        store.undo()
-        dismissToast()
-    }
-
+    /// Offers to undo the action just recorded — and only that one. See
+    /// `PanelState.Toast`.
     private func showToast(_ message: String) {
-        toastTask?.cancel()
-        withAnimation(Motion.toast) { toast = message }
-        toastTask = Task {
-            try? await Task.sleep(for: Motion.toastLifetime)
-            guard !Task.isCancelled else { return }
-            dismissToast()
-        }
-    }
-
-    private func dismissToast() {
-        toastTask?.cancel()
-        toastTask = nil
-        withAnimation(Motion.overlay) { toast = nil }
+        guard let undoID = store.lastUndoID else { return }
+        panelState.showToast(message, undoing: undoID)
     }
 }
 

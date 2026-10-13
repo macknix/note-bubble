@@ -35,6 +35,38 @@ final class PanelState: ObservableObject {
     /// the undo toast, any open confirmation and the scroll position with it.
     @Published var isPinned = false
 
+    // MARK: - The undo toast
+
+    /// A brief "Popped “Milk” · Undo", tied to the one action it describes.
+    struct Toast: Equatable, Identifiable {
+        let id = UUID()
+        let message: String
+        /// The undo record it offers to reverse — see `BubbleStore.lastUndoID`.
+        let undoID: UUID
+    }
+
+    /// Lives here rather than in the grid so anything that does something undoable
+    /// can raise one: the grid for a pop or a filing, `RootView` for deleting a board.
+    @Published private(set) var toast: Toast?
+    private var toastTask: Task<Void, Never>?
+
+    func showToast(_ message: String, undoing undoID: UUID) {
+        toastTask?.cancel()
+        let toast = Toast(message: message, undoID: undoID)
+        self.toast = toast
+        toastTask = Task { [weak self] in
+            try? await Task.sleep(for: Motion.toastLifetime)
+            guard !Task.isCancelled, self?.toast == toast else { return }
+            self?.dismissToast()
+        }
+    }
+
+    func dismissToast() {
+        toastTask?.cancel()
+        toastTask = nil
+        toast = nil
+    }
+
     /// Everything currently holding the panel open.
     ///
     /// A set of named reasons rather than one flag, because there are four owners
@@ -91,6 +123,7 @@ final class PanelState: ObservableObject {
     /// a confirmation nobody can see any more would stop it ever folding away.
     func forgetView() {
         holds.subtract(Hold.viewOwned)
+        dismissToast()
         isDraggingTile = false
         hoveredWorkspace = nil
         previewWorkspace = nil

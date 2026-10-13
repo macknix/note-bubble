@@ -40,6 +40,14 @@ enum PanelStateTests {
             state.isPinned = true
             state.forgetView()
             Check.isTrue(state.isPinned, "pinning survives the view being replaced")
+
+            let record = UUID()
+            state.showToast("Popped “milk”", undoing: record)
+            Check.equal(state.toast?.undoID, record, "a toast remembers the undo it offers")
+            state.showToast("Popped “eggs”", undoing: UUID())
+            Check.equal(state.toast?.message, "Popped “eggs”", "a newer toast replaces it")
+            state.forgetView()
+            Check.nil_(state.toast, "and a replaced view takes its toast with it")
         }
     }
 }

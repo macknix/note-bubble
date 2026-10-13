@@ -105,6 +105,7 @@ final class BubbleStore: ObservableObject {
     }
 
     private struct UndoRecord {
+        let id = UUID()
         let action: UndoAction
         let label: String
         /// Where the user was standing when it happened, so undoing returns them
@@ -120,6 +121,20 @@ final class BubbleStore: ObservableObject {
     @Published private(set) var undoLabel: String?
 
     var canUndo: Bool { !undoStack.isEmpty }
+
+    /// Identifies what ⌘Z would undo right now. Whatever offers an undo for one
+    /// particular action — the toast — holds on to this, so it can tell when
+    /// something newer has been recorded on top and its offer no longer applies.
+    var lastUndoID: UUID? { undoStack.last?.id }
+
+    /// Undoes the action `id` names, and only if it is still the most recent one.
+    /// Returns whether it did.
+    @discardableResult
+    func undo(ifLatest id: UUID) -> Bool {
+        guard lastUndoID == id else { return false }
+        undo()
+        return true
+    }
 
     private func recordUndo(_ action: UndoAction, label: String) {
         undoStack.append(
