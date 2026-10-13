@@ -6,6 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A newer push to the same branch or PR supersedes the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: macos-15
@@ -13,17 +18,34 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Swift version
-        run: swift --version
+        id: swift
+        run: |
+          swift --version
+          echo "version=$(swift --version 2>&1 | head -1 | shasum | cut -c1-12)" >> "$GITHUB_OUTPUT"
 
+      # The cold build is most of the run. Keyed on the toolchain and the package
+      # manifest; sources changing only means an incremental rebuild on top.
+      - name: Cache the build
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: build-${{ runner.os }}-${{ steps.swift.outputs.version }}-${{ hashFiles('Package.swift', 'Package.resolved') }}-${{ github.sha }}
+          restore-keys: |
+            build-${{ runner.os }}-${{ steps.swift.outputs.version }}-${{ hashFiles('Package.swift', 'Package.resolved') }}-
+
+      # Warnings fail the build: the tree is clean, and the Swift 6 concurrency
+      # warnings in particular are errors-in-waiting (see `swiftLanguageMode`).
       - name: Build
-        run: swift build
+        run: swift build -Xswiftc -warnings-as-errors
 
       # Not `swift test`: XCTest and swift-testing ship with Xcode, and this
       # project builds with the Command Line Tools toolchain alone. The suite is an
       # executable that exits non-zero on failure. See CLAUDE.md.
       - name: Test
-        run: swift run NoteBubbleTests
+        run: swift run -Xswiftc -warnings-as-errors NoteBubbleTests
 
+      # Release configuration, app product only — the path `--product NoteBubble`
+      # protects, and the one that has broken before when the test target leaked in.
       - name: Assemble the app bundle
         run: ./Scripts/build-app.sh
 
@@ -35,4 +57,5 @@ jobs:
           test -f "$APP/Contents/Resources/AppIcon.icns"
           test -d "$APP/Contents/Resources/Sounds"
           plutil -lint "$APP/Contents/Info.plist"
+          codesign --verify "$APP"
           echo "bundle OK"

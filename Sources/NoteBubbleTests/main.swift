@@ -17,5 +17,7 @@ MainActor.assumeIsolated {
     PanelShortcutTests.run()
     HoverIntentTests.run()
     PreviewDwellTests.run()
+    LayoutPlanTests.run()
+    DemoDataTests.run()
     exit(Check.summary())
 }
