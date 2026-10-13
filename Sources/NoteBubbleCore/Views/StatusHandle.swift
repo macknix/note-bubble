@@ -26,9 +26,9 @@ struct StatusHandle: View {
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
                     .foregroundStyle(.primary.opacity(0.4))
             } else {
-                if counts.fresh > 0 { badge(counts.fresh, days: 0, urgent: false) }
-                if counts.aging > 0 { badge(counts.aging, days: 4, urgent: false) }
-                if counts.overdue > 0 { badge(counts.overdue, days: 30, urgent: true) }
+                if counts.fresh > 0 { badge(counts.fresh, stage: .fresh) }
+                if counts.aging > 0 { badge(counts.aging, stage: .aging) }
+                if counts.overdue > 0 { badge(counts.overdue, stage: .overdue) }
             }
         }
         .padding(.horizontal, 9)
@@ -61,8 +61,8 @@ struct StatusHandle: View {
         return parts.joined(separator: " · ") + " — drag to move Note Bubble"
     }
 
-    private func badge(_ count: Int, days: Double, urgent: Bool) -> some View {
-        StageBadge(count: count, days: days, pulses: urgent)
+    private func badge(_ count: Int, stage: Aging.Stage) -> some View {
+        StageBadge(count: count, stage: stage)
             .transition(.scale.combined(with: .opacity))
     }
 }
@@ -75,8 +75,9 @@ struct StatusHandle: View {
 /// up later — a note crossing into overdue with the panel open — never pulsed.
 private struct StageBadge: View {
     let count: Int
-    let days: Double
-    let pulses: Bool
+    let stage: Aging.Stage
+
+    private var pulses: Bool { stage == .overdue }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -106,7 +107,7 @@ private struct StageBadge: View {
         Circle()
             .fill(
                 RadialGradient(
-                    colors: [Aging.color(forDays: days), Aging.shadeColor(forDays: days)],
+                    colors: [AgingPalette.color(for: stage), AgingPalette.shadeColor(for: stage)],
                     center: UnitPoint(x: 0.35, y: 0.3),
                     startRadius: 0,
                     endRadius: 11

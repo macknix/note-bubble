@@ -12,10 +12,15 @@ enum AgingTests {
             Check.equal(Aging.stage(forDays: 400), .overdue, "ancient notes stay overdue")
 
             // No hue wraparound back towards green once past the window.
-            Check.equal(Aging.color(forDays: 7), Aging.color(forDays: 900), "colour clamps at the red end")
-            Check.equal(Aging.color(forDays: 0), Aging.color(forDays: -5), "colour clamps at the green end")
+            Check.equal(AgingPalette.color(forDays: 7), AgingPalette.color(forDays: 900), "colour clamps at the red end")
+            Check.equal(AgingPalette.color(forDays: 0), AgingPalette.color(forDays: -5), "colour clamps at the green end")
 
-            let samples = [0.0, 2.0, 4.0, 6.0, 7.0].map { Aging.color(forDays: $0) }
+            Check.equal(AgingPalette.color(for: .overdue), AgingPalette.color(forDays: 30),
+                        "a stage's colour is the colour of a note in it")
+            Check.equal(AgingPalette.color(for: .fresh), AgingPalette.color(forDays: 0), "fresh is the starting green")
+            Check.equal(Aging.stage(forDays: 5), .aging, "and ageing's colour comes from inside its own window")
+
+            let samples = [0.0, 2.0, 4.0, 6.0, 7.0].map { AgingPalette.color(forDays: $0) }
             var allDistinct = true
             for (a, b) in zip(samples, samples.dropFirst()) where a == b { allDistinct = false }
             Check.isTrue(allDistinct, "colour keeps changing across the week")

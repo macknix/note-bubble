@@ -25,8 +25,8 @@ struct BubbleTile: View {
     @FocusState private var focused: Bool
 
     private var days: Double { node.ageInDays(at: now) }
-    private var tint: Color { Aging.color(forDays: days) }
-    private var shade: Color { Aging.shadeColor(forDays: days) }
+    private var tint: Color { AgingPalette.color(forDays: days) }
+    private var shade: Color { AgingPalette.shadeColor(forDays: days) }
 
     var body: some View {
         ZStack {

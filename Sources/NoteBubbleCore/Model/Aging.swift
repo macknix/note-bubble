@@ -1,10 +1,15 @@
-import SwiftUI
+import Foundation
 
 /// Traffic-light ageing. A note starts green and slides continuously through amber
 /// to red over a week, so the buckets below read as smooth decay rather than three
 /// discrete jumps. `Stage` exists only for things that need a hard answer, like the
 /// overdue badge on the minimised pill.
+///
+/// The *rules* only. What the stages look like is `AgingPalette`, in Views: the
+/// model knows nothing of colour, which is what keeps it testable without SwiftUI.
 enum Aging {
+    /// Days at which a note stops being fresh and starts to amber.
+    static let agingAfterDays: Double = 3
     /// Days at which a note is fully red. 0–2 reads green, 3–6 amber, 7+ red.
     static let redAfterDays: Double = 7
 
@@ -16,7 +21,7 @@ enum Aging {
 
     static func stage(forDays days: Double) -> Stage {
         switch days {
-        case ..<3: .fresh
+        case ..<agingAfterDays: .fresh
         case ..<redAfterDays: .aging
         default: .overdue
         }
@@ -25,20 +30,9 @@ enum Aging {
     /// Position through the ageing window, 0 (fresh) to 1 (red), clamped so a note
     /// months old looks exactly like one a week old rather than wrapping back
     /// through the hue circle to green.
-    private static func progress(forDays days: Double) -> Double {
+    static func progress(forDays days: Double) -> Double {
         let t = min(max(days / redAfterDays, 0), 1)
         return pow(t, 0.85) // spend slightly longer looking urgent than fresh
-    }
-
-    /// Hue sweeps 0.33 (green) → 0.0 (red). Halfway through the week lands on amber.
-    static func color(forDays days: Double) -> Color {
-        Color(hue: 0.33 * (1 - progress(forDays: days)), saturation: 0.72, brightness: 0.92)
-    }
-
-    /// Deeper shade of the same hue, for the gradient's far corner and for text
-    /// that sits on a white chip over the tile.
-    static func shadeColor(forDays days: Double) -> Color {
-        Color(hue: 0.33 * (1 - progress(forDays: days)), saturation: 0.88, brightness: 0.66)
     }
 
     static func relativeAge(from date: Date, now: Date) -> String {

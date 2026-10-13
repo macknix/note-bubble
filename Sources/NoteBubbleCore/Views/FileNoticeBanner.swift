@@ -11,7 +11,7 @@ struct FileNoticeBanner: View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Aging.color(forDays: Aging.redAfterDays))
+                .foregroundStyle(AgingPalette.color(for: .overdue))
             Text(message)
                 .font(.system(size: 11))
                 .fixedSize(horizontal: false, vertical: true)

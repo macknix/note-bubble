@@ -40,7 +40,8 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 
 | To change… | Go to |
 |---|---|
-| Colours / ageing thresholds | `Model/Aging.swift` |
+| Ageing thresholds | `Model/Aging.swift` |
+| Ageing colours, and the colour each stage stands for | `Views/AgingPalette.swift` |
 | How often ages refresh on a board left alone | `Support/AgeClock.swift` |
 | Any animation or delay | `Support/Motion.swift` — all of them live here |
 | Tile sizing, column count, packing | `Layout/GridLayout.swift` |
@@ -142,6 +143,7 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
                            WorkspaceChip, WorkspaceDots, WorkspacePreview,
                            BubbleGrid, BubbleTile, TileStyle, PopBurst,
                            ConfirmSheet, ConfirmPopSheet, UndoToast, FileNoticeBanner,
+                           AgingPalette,
                            MinimisedPill, WindowDragArea
   Window/                  OverlayPanel, PanelController, PanelParking,
                            PanelPlacement, PanelState, PanelDrag, MenuBarItem,
@@ -826,10 +828,15 @@ material, tiles and shadows fade as one.
 
 ### Ageing is continuous, buckets are only for the badge
 
-`Aging.color(forDays:)` interpolates hue 0.33 → 0.0 across a 7-day window, so a
+`AgingPalette.color(forDays:)` interpolates hue 0.33 → 0.0 across a 7-day window, so a
 note decays smoothly rather than jumping between three colours. `Aging.Stage`
 (fresh / aging / overdue) exists only where a hard answer is needed — currently
 the overdue count on the minimised pill.
+
+Rules and looks are split: `Aging` (Model) is thresholds, stages and relative-age
+text, Foundation only; `AgingPalette` (Views) is every colour. Anything showing a
+whole stage — a count badge, a workspace dot, the pill — asks for
+`AgingPalette.color(for: stage)` rather than inventing a day count to colour.
 
 **Ages are measured against `BubbleStore.now`, never `Date()`.** A view only
 re-renders when something changes, and on a widget left alone for days nothing
