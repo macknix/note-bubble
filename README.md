@@ -32,7 +32,8 @@ or a paid Apple developer account. To let it through:
    **Open Anyway** next to Note Bubble.
 
 Or, from Terminal: `xattr -dr com.apple.quarantine "/Applications/Note Bubble.app"`.
-Either way, macOS remembers, and it opens normally from then on.
+Either way, macOS remembers, and it opens normally from then on. To have it there
+every morning, turn on **Open at login** in the menu bar icon's right-click menu.
 
 Each release lists SHA-256 checksums in `SHA256SUMS.txt` if you want to check the
 download: `shasum -a 256 -c SHA256SUMS.txt`.
@@ -52,8 +53,9 @@ open "build/Note Bubble.app"
 
 If `swift` isn't found, run `xcode-select --install` first.
 
-To keep it: drag `build/Note Bubble.app` into `/Applications`, then add it to
-**System Settings → General → Login Items** so it's there every morning.
+To keep it: drag `build/Note Bubble.app` into `/Applications`, then turn on
+**Open at login** in the menu bar icon's right-click menu so it's there every
+morning.
 
 Nothing leaves your machine: no accounts, no network, no telemetry. Notes are a
 plain JSON file in your own Application Support folder.
@@ -94,8 +96,8 @@ grid — it appears just below the icon. When anything has gone red the icon sho
 the count beside it, so the thing the traffic lights exist to tell you is visible
 without opening anything.
 
-**Right-click the icon** for Open, a **Workspaces** submenu, *Show floating pill*,
-*Mute pop sounds*, and Quit. Picking a workspace there opens the panel on it, and
+**Right-click the icon** for the version you are running, Open, a **Workspaces**
+submenu, *Show floating pill*, *Open at login*, *Mute pop sounds*, About and Quit. Picking a workspace there opens the panel on it, and
 any board with overdue notes says so beside its name — so a board you haven't
 looked at in a fortnight can still get your attention.
 

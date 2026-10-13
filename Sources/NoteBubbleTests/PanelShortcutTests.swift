@@ -1,6 +1,7 @@
 import Foundation
 @testable import NoteBubbleCore
 
+@MainActor
 enum PanelShortcutTests {
     private static func key(_ characters: String, keyCode: UInt16 = 0, command: Bool = true, shift: Bool = false) -> PanelShortcut? {
         PanelShortcut.match(characters: characters, keyCode: keyCode, command: command, shift: shift)
@@ -28,6 +29,7 @@ enum PanelShortcutTests {
             // The test runner is not an assembled bundle, so nothing was stamped.
             Check.nil_(AppVersion.marketing, "outside a bundle there is no version")
             Check.equal(AppVersion.summary, "Note Bubble — development build", "and the menu says so")
+            Check.isTrue(LoginItem.state == .unavailable, "nor anything to register as a login item")
         }
     }
 }
