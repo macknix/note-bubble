@@ -16,10 +16,37 @@ enum PanelSpace {
 /// to tell each other.
 @MainActor
 final class PanelState: ObservableObject {
-    /// Set while something on screen must not be interrupted: a confirmation
-    /// sheet, or a tile mid-drag. The panel refuses to auto-collapse while true,
-    /// otherwise brushing the pointer off the edge would cancel the interaction.
-    @Published var blocksAutoCollapse = false
+    /// Something on screen that must not be interrupted by the panel folding away.
+    enum Hold: Hashable {
+        case tileDrag
+        case panelDrag
+        case popConfirmation
+        case workspaceDeletion
+
+        /// Holds that belong to the view, and so go when the view does.
+        static let viewOwned: Set<Hold> = [.tileDrag, .popConfirmation, .workspaceDeletion]
+    }
+
+    /// Everything currently holding the panel open.
+    ///
+    /// A set of named reasons rather than one flag, because there are four owners
+    /// and they overlap. As a single `Bool` each owner assumed it was the only one:
+    /// letting go of a panel drag while a pop confirmation was open set it to false,
+    /// the pointer leaving then folded the panel away, and the question being asked
+    /// vanished with the view. Each owner now adds and removes only its own reason.
+    @Published private(set) var holds: Set<Hold> = []
+
+    /// The panel refuses to auto-collapse while anything holds it, otherwise
+    /// brushing the pointer off the edge would cancel the interaction.
+    var blocksAutoCollapse: Bool { !holds.isEmpty }
+
+    func setHold(_ hold: Hold, _ isHeld: Bool) {
+        if isHeld {
+            holds.insert(hold)
+        } else {
+            holds.remove(hold)
+        }
+    }
 
     // MARK: - Dragging a tile onto another workspace
 
@@ -47,13 +74,15 @@ final class PanelState: ObservableObject {
     /// second time for no one's benefit.
     var workspaceDropTargets: [WorkspaceDropTarget] = []
 
-    /// Forgets any drag in progress.
+    /// Forgets everything the outgoing view owned.
     ///
-    /// The grid clears its own state when a drag ends, but the grid's state does not
-    /// outlive the grid — and `PanelController` throws the whole view away whenever
-    /// it swaps what the panel shows. A drag interrupted that way would otherwise
-    /// leave the dots swollen for good, and the panel refusing to resize itself.
-    func endTileDrag() {
+    /// The grid clears its own state when a drag ends or a confirmation is answered,
+    /// but that state does not outlive the view — and `PanelController` throws the
+    /// whole view away whenever it swaps what the panel shows. Left behind, a drag
+    /// would keep the dots swollen and the panel refusing to resize, and a hold for
+    /// a confirmation nobody can see any more would stop it ever folding away.
+    func forgetView() {
+        holds.subtract(Hold.viewOwned)
         isDraggingTile = false
         hoveredWorkspace = nil
         previewWorkspace = nil

@@ -13,5 +13,6 @@ MainActor.assumeIsolated {
     WorkspaceTests.run()
     WorkspaceSwipeTests.run()
     TileFlightTests.run()
+    PanelStateTests.run()
     exit(Check.summary())
 }

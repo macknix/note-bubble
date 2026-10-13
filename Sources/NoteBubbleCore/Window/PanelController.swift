@@ -224,7 +224,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     func beginPanelDrag() {
         dragAnchor = (window: panel.frame.origin, mouse: NSEvent.mouseLocation)
         // A drag can wander anywhere; don't let leaving the panel fold it away.
-        panelState.blocksAutoCollapse = true
+        panelState.setHold(.panelDrag, true)
         collapseTask?.cancel()
     }
 
@@ -244,7 +244,7 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     func endPanelDrag() {
         dragAnchor = nil
-        panelState.blocksAutoCollapse = false
+        panelState.setHold(.panelDrag, false)
         // Where it was dropped decides where the pill now rests and which way the
         // panel opens from it. This handle is the bar, so an expanded panel parks by
         // its top edge — see `PanelPlacement.init(draggedPanel:in:)`.
@@ -356,10 +356,11 @@ final class PanelController: NSObject, NSWindowDelegate {
     /// `display: false` keeps the resized window from drawing its old contents; the
     /// incoming view is laid out once, at its final size, and drawn once.
     private func show(_ view: some View, sized size: NSSize) {
-        // The outgoing view takes its @State with it, including anything it knew
-        // about a drag in progress. What survives is `panelState`, so it is cleared
-        // here rather than left describing a tile that no longer exists.
-        panelState.endTileDrag()
+        // The outgoing view takes its @State with it, including any drag in progress
+        // and any confirmation it was asking. What survives is `panelState`, so it is
+        // cleared here rather than left holding the panel open for a question no one
+        // can see any more.
+        panelState.forgetView()
         panel.setFrame(parking.frame(sized: size), display: false)
         panel.contentView = FirstMouseHostingView(rootView: view)
         panel.displayIfNeeded()
