@@ -49,9 +49,15 @@ final class MenuBarItem {
         }
 
         refreshBadge()
-        observer = store.objectWillChange.sink { [weak self] _ in
-            Task { @MainActor in self?.refreshBadge() }
-        }
+        // Debounced: the badge only changes when a note comes, goes or ages, but the
+        // store also changes on every keystroke, and recounting every board per
+        // character bought nothing. Delivered after the change has landed, which
+        // `objectWillChange` on its own does not promise.
+        observer = store.objectWillChange
+            .debounce(for: .milliseconds(150), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.refreshBadge() }
+            }
     }
 
     deinit {
@@ -72,7 +78,10 @@ final class MenuBarItem {
     /// where that total gets broken down again, board by board.
     private func refreshBadge() {
         let overdue = store.everywhere.overdue
-        item.button?.title = overdue > 0 ? " \(overdue)" : ""
+        let title = overdue > 0 ? " \(overdue)" : ""
+        // Setting the same title still re-lays-out the status item.
+        guard item.button?.title != title else { return }
+        item.button?.title = title
         item.button?.toolTip = overdue > 0
             ? "Note Bubble — \(overdue) overdue"
             : "Note Bubble"
@@ -150,7 +159,7 @@ final class MenuBarItem {
     /// The icon's badge is one total across every board; this is where it is
     /// broken back down, so you can see which board is rotting.
     private func title(for workspace: Workspace) -> String {
-        let overdue = workspace.tally(at: store.now).overdue
+        let overdue = store.tally(of: workspace).overdue
         return overdue > 0 ? "\(workspace.displayName) — \(overdue) overdue" : workspace.displayName
     }
 

@@ -256,6 +256,35 @@ enum WorkspaceTests {
             Check.isTrue(store.canUndo, "and that is undoable")
         }
 
+        Check.suite("Workspaces — cached tallies follow every change") {
+            let (store, url) = makeStore()
+            defer { try? FileManager.default.removeItem(at: url) }
+
+            let home = store.currentWorkspaceID
+            named(store, ["one", "two"])
+            Check.equal(store.everywhere.total, 2, "a first read counts")
+            named(store, ["three"])
+            Check.equal(store.everywhere.total, 3, "adding a note is seen, not a stale count")
+
+            let work = store.addWorkspace(named: "Work")
+            store.renamingWorkspaceID = nil
+            store.selectWorkspace(home)
+            let one = store.visible[0].id
+            store.move(one, toWorkspace: work)
+            let workBoard = store.workspaces.first { $0.id == work }!
+            Check.equal(store.tally(of: workBoard).total, 1, "filing moves the count to the board it lands on")
+            Check.equal(store.stageCounts.total, 2, "and away from the board it left")
+
+            store.pop(store.visible[0].id)
+            Check.equal(store.everywhere.total, 2, "popping is seen")
+            store.undo()
+            Check.equal(store.everywhere.total, 3, "and so is undoing it")
+
+            Check.equal(store.everywhere.overdue, 0, "nothing is overdue yet")
+            store.advanceClock(to: store.now.addingTimeInterval(8 * 86_400))
+            Check.equal(store.everywhere.overdue, 3, "the clock moving is seen too")
+        }
+
         Check.suite("Workspaces — deleting") {
             let (store, url) = makeStore()
             defer { try? FileManager.default.removeItem(at: url) }

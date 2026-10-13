@@ -10,7 +10,9 @@ import Combine
 final class BubbleStore: ObservableObject {
     /// Every board, in the order they are swiped through. **Never empty** — see
     /// `BubbleDocument.normalised`, which is the only way one gets in here.
-    @Published private(set) var workspaces: [Workspace]
+    @Published private(set) var workspaces: [Workspace] {
+        didSet { tallies.removeAll(keepingCapacity: true) }
+    }
     /// Which of them is on screen.
     @Published private(set) var currentIndex: Int = 0
     /// IDs from the root down to the level currently on screen. Empty means top level.
@@ -259,7 +261,25 @@ final class BubbleStore: ObservableObject {
     /// edit was: a note could go overdue overnight and the pill still say green.
     /// `AgeClock` advances this as time passes; being `@Published`, that re-renders
     /// every tile and count and refreshes the menu bar badge.
-    @Published private(set) var now = Date()
+    @Published private(set) var now = Date() {
+        didSet { tallies.removeAll(keepingCapacity: true) }
+    }
+
+    /// Each board's `StageTally`, worked out at most once per change.
+    ///
+    /// Counts are read on every render, and from several places at once: the status
+    /// handle, every workspace dot, the pill, the menu bar. Walking each tree for
+    /// each of them, on every keystroke, was most of the cost of typing. Any change
+    /// to the boards or the clock forgets the lot; the next read refills it.
+    private var tallies: [UUID: StageTally] = [:]
+
+    /// How a board's notes, at any depth, are spread across the stages — cached.
+    func tally(of workspace: Workspace) -> StageTally {
+        if let cached = tallies[workspace.id] { return cached }
+        let tally = workspace.tally(at: now)
+        tallies[workspace.id] = tally
+        return tally
+    }
 
     /// Moves `now` on. Called by `AgeClock`, and by anything that stamps a note with
     /// the real time, so that note never reads as written in the future.
@@ -271,7 +291,7 @@ final class BubbleStore: ObservableObject {
     /// How the whole tree is distributed across the traffic lights. Drives the
     /// status handle in the top bar, which is the only place all three are shown.
     var stageCounts: StageTally {
-        StageTally(of: root, at: now)
+        tally(of: currentWorkspace)
     }
 
     /// Every unpopped bubble in the app, and how many of them have gone red.
@@ -282,7 +302,7 @@ final class BubbleStore: ObservableObject {
     /// pill and the menu bar icon — there is no board in front of you, so a count
     /// that only described one would be quietly ignoring the rest of your notes.
     var everywhere: StageTally {
-        workspaces.reduce(StageTally()) { $0 + $1.tally(at: now) }
+        workspaces.reduce(StageTally()) { $0 + tally(of: $1) }
     }
 
     // MARK: - Workspaces
