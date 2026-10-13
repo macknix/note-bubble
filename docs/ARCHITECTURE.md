@@ -341,9 +341,11 @@ animation is deliberately disabled so it tracks the cursor without lag.
 drag in `BubbleGrid.watchForShake`). Four reversals of at least
 `ShakeDetector.minimumSwing`, within `ShakeDetector.window`, on either axis — so a
 rearrange that wanders, or overshoots a slot and comes back, never counts. Not while
-the tile is over a workspace dot, where the same waggle is aiming. A shake ends the
-drag the same way filing does — `cancelDrag`, consuming the press, because the
-button is still down — so the tile settles home, green.
+the tile is over a workspace dot, where the same waggle is aiming. The drag carries
+on: the tile turns green in your hand (the lifted copy draws the store's current
+note, not the one copied at pick-up) and lands wherever it is let go. An earlier
+version ended the drag on the spot and snapped the tile home with the button still
+down, which felt like having it snatched. One shake per carry.
 
 ### Two things the grid must not do
 
