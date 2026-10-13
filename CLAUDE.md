@@ -58,14 +58,16 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | Text-editing shortcuts (⌘C/⌘V/⌘A), and where ⌘Z goes | `App/MainMenu.swift` |
 | Workspaces: the boards themselves | `Model/Workspace.swift` (and the file's shape), `Model/BubbleStore.swift` |
 | What counts as a swipe | `Support/WorkspaceSwipe.swift` decides; `Window/PanelController.swift` feeds it |
-| Where a dragged tile is, and which dot it is over | `Support/TileFlight.swift` decides; `Views/BubbleGrid.swift` draws it |
+| Where a dragged tile is, and which dot it is over | `Support/TileFlight.swift` decides; `Views/BubbleGrid+Drag.swift` draws it |
+| What resting a tile on a dot shows | `Support/PreviewDwell.swift` decides; `Views/BubbleGrid+Preview.swift` draws it |
+| Popping: confirmation, burst, toast | `Views/BubbleGrid+Pop.swift` |
 | How long you must rest on a dot before its board slides in | `Motion.workspacePreview` |
 | The workspace name and its menu | `Views/WorkspaceChip.swift` |
 | The workspace dots — the swipe's affordance, and the drop targets | `Views/WorkspaceDots.swift` |
 | What another board looks like mid-drag | `Views/WorkspacePreview.swift` |
 | Menu bar icon and its menu | `Window/MenuBarItem.swift` |
 | What a tile looks like | `Views/BubbleTile.swift` |
-| Tap / hold / drag behaviour | `Support/TileGesture.swift` decides; `Views/BubbleGrid.swift` carries it out |
+| Tap / hold / drag behaviour | `Support/TileGesture.swift` decides; `Views/BubbleGrid+Drag.swift` carries it out |
 | Note data, undo | `Model/BubbleStore.swift` |
 | Reading and writing `bubbles.json`, backups | `Model/BubbleFile.swift` |
 | Asking before something destructive | `Views/ConfirmSheet.swift` |
@@ -143,10 +145,11 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
                            StageTally
   Layout/                  GridLayout, LayoutPlan, TileText, TileSizeCache
   Support/                 Motion, TileGesture, TileFlight, WorkspaceSwipe, AgeClock,
-                           HoverIntent
+                           HoverIntent, PreviewDwell
   Views/                   RootView, GlassBar, BarStyle, BarButtons, StatusHandle,
                            WorkspaceChip, WorkspaceDots, WorkspacePreview,
-                           BubbleGrid, BubbleTile, TileStyle, PopBurst,
+                           BubbleGrid (+Drag, +Preview, +Pop), BubbleTile,
+                           TileStyle, PopBurst,
                            ConfirmSheet, ConfirmPopSheet, UndoToast, FileNoticeBanner,
                            AgingPalette,
                            MinimisedPill, WindowDragArea
