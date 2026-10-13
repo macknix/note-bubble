@@ -416,6 +416,15 @@ The rules layer is three ideas:
 Together these are why a widget parked top-right opens leftwards and downwards and
 folds back into that corner, and bottom-left does the mirror image.
 
+**It opens towards the room it has.** A pill can rest with its *top* corner anchored
+low on the screen — a panel dragged by its bar parks by its top edge wherever it is
+dropped — and hanging the panel down from there runs off the bottom. Clamping alone
+pulled it back only as far as the screen edge, so it still hung down past the pill.
+`PanelPlacement.frame(size:restingSize:in:)` flips instead: no room below, it opens
+upwards from the pill's bottom edge; no room above a bottom-anchored pill, it opens
+downwards from its top. Whichever way overhangs less wins. At the pill's own size
+nothing ever flips, so the pill still never moves.
+
 Two rules keep it from wandering, and both are fixes rather than precautions:
 
 - **Every size is measured from the parked corner, never from the current frame.**

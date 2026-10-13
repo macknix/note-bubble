@@ -13,6 +13,42 @@ enum PanelPlacementTests {
         snapping()
         resizing()
         placements()
+        openingDirection()
+    }
+
+    private static func openingDirection() {
+        Check.suite("Panel opens towards the room it has") {
+            let topLeft = PanelAnchor(horizontal: .left, vertical: .top)
+            let bottomLeft = PanelAnchor(horizontal: .left, vertical: .bottom)
+
+            // A pill whose top edge is parked 150pt up the screen: 400pt of panel
+            // hung downwards from there would end 250pt below the bottom.
+            let low = PanelPlacement(corner: CGPoint(x: 100, y: 150), anchor: topLeft)
+            let opened = low.frame(size: expanded, restingSize: pill, in: screen)
+            Check.equal(opened.minY, 150 - pill.height, "with no room below, it opens upwards from the pill's bottom edge")
+            Check.equal(opened.maxY, 150 - pill.height + expanded.height, "and rises the full height")
+            Check.equal(opened.minX, 100, "on the same side as before")
+            Check.equal(low.frame(size: pill, restingSize: pill, in: screen),
+                        topLeft.frame(size: pill, at: low.corner), "the pill itself never moves")
+
+            // With room below, nothing changes.
+            let high = PanelPlacement(corner: CGPoint(x: 100, y: 800), anchor: topLeft)
+            Check.equal(high.frame(size: expanded, restingSize: pill, in: screen),
+                        topLeft.frame(size: expanded, at: high.corner), "with room below, it opens downwards as ever")
+
+            // And the mirror: a bottom-anchored pill high up opens downwards.
+            let tall = PanelPlacement(corner: CGPoint(x: 100, y: 700), anchor: bottomLeft)
+            let dropped = tall.frame(size: expanded, restingSize: pill, in: screen)
+            Check.equal(dropped.maxY, 700 + pill.height, "with no room above, it opens downwards from the pill's top edge")
+
+            // A screen too short for either way takes the lesser overhang.
+            let short = CGRect(x: 0, y: 0, width: 1440, height: 300)
+            let squeezed = PanelPlacement(corner: CGPoint(x: 100, y: 120), anchor: topLeft)
+                .frame(size: expanded, restingSize: pill, in: short)
+            let overhang = { (f: CGRect) in max(0, short.minY - f.minY) + max(0, f.maxY - short.maxY) }
+            Check.isTrue(overhang(squeezed) <= overhang(topLeft.frame(size: expanded, at: CGPoint(x: 100, y: 120))),
+                         "too short for either way, it picks the way that overhangs less")
+        }
     }
 
     private static func anchoring() {
