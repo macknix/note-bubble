@@ -15,5 +15,6 @@ MainActor.assumeIsolated {
     TileFlightTests.run()
     PanelStateTests.run()
     PanelShortcutTests.run()
+    HoverIntentTests.run()
     exit(Check.summary())
 }

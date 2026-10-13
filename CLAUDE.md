@@ -48,7 +48,10 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | Where every tile sits for one render | `Layout/LayoutPlan.swift` |
 | Label font, tile padding | `Layout/TileText.swift` (measurement depends on these) |
 | Tile corner shape | `Views/TileStyle.swift` |
-| Panel size, fade, hover open/close timing | `Window/PanelController.swift` |
+| Panel size, fade | `Window/PanelController.swift` |
+| When hover opens and closes the panel | `Support/HoverIntent.swift` decides; delays in `Motion` |
+| Dragging the panel itself | `Window/PanelMover.swift` |
+| Two-finger swipe wiring | `Window/SwipeMonitor.swift` (the rules are `Support/WorkspaceSwipe.swift`) |
 | Where the panel sits: snapping, which way it opens | `Window/PanelParking.swift`, rules in `Window/PanelPlacement.swift` |
 | The pill's size | `Views/MinimisedPill.swift` |
 | Keyboard shortcuts | `Window/OverlayPanel.swift` (`PanelShortcut` maps keys, `PanelCommands` carries them out) and `Window/HotKey.swift` (⌥Space) |
@@ -139,7 +142,8 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
   Model/                   BubbleNode, BubbleStore, BubbleFile, Workspace, Aging,
                            StageTally
   Layout/                  GridLayout, LayoutPlan, TileText, TileSizeCache
-  Support/                 Motion, TileGesture, TileFlight, WorkspaceSwipe, AgeClock
+  Support/                 Motion, TileGesture, TileFlight, WorkspaceSwipe, AgeClock,
+                           HoverIntent
   Views/                   RootView, GlassBar, BarStyle, BarButtons, StatusHandle,
                            WorkspaceChip, WorkspaceDots, WorkspacePreview,
                            BubbleGrid, BubbleTile, TileStyle, PopBurst,
@@ -148,6 +152,7 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
                            MinimisedPill, WindowDragArea
   Window/                  OverlayPanel, PanelController, PanelParking,
                            PanelPlacement, PanelState, PanelDrag, PanelCommands,
+                           PanelMover, SwipeMonitor,
                            MenuBarItem, HotKey
 Sources/NoteBubbleTests/   executable test suite + Harness
 Scripts/                   build-app.sh, make-icon.swift, make-pop-sounds.py,
@@ -793,12 +798,15 @@ short of relaunching from Finder. Quitting is ⌘Q or the menu bar menu only.
 
 ### The pill is the resting state; hover drives everything
 
-`PanelController` starts minimised and treats hover as the primary interaction:
-`setHovering(true)` schedules `expand` after `expandDelay` (180ms dwell, so
-sweeping past doesn't fling the grid open), `setHovering(false)` schedules
-`minimise` after `collapseDelay` (450ms grace, so overshooting an edge doesn't
-close it). Both tasks cancel each other and are cancelled by explicit
-minimise/expand.
+`PanelController` starts minimised and treats hover as the primary interaction.
+**The rules are `Support/HoverIntent`**, a pure function from (event, situation) to
+effects — the same split as `TileGesture`, and tested the same way. Entering the
+pill schedules `expand` after `Motion.expandDelay` (a dwell, so sweeping past
+doesn't fling the grid open); leaving the panel schedules `minimise` after
+`Motion.collapseDelay` (a grace, so overshooting an edge doesn't close it). Each
+cancels the other, and both are cancelled by explicit minimise/expand. The
+controller owns the timers and reports `.expandDelayElapsed` /
+`.collapseDelayElapsed` back.
 
 **Hover-expansion passes `takeFocus: false`.** Making the panel key on hover would
 divert the user's typing out of whatever app they are actually in — the single
