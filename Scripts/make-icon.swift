@@ -5,9 +5,10 @@
 //   swift Scripts/make-icon.swift
 //
 // Drawn in code rather than shipped as a binary asset so it stays editable, stays
-// in step with the tiles it depicts, and needs no image editor. The design is the
-// app's own subject matter: three rounded-square notes on a dark plate, tinted
-// green / amber / red to show the traffic-light ageing at a glance.
+// in step with the app, and needs no image editor. The design is the app's name:
+// three glass bubbles of different sizes on a night-sky plate, each lit from the
+// top left with a curved reflection so they read as spheres, and tinted green /
+// amber / red for the traffic-light ageing.
 //
 // Requires `iconutil` (Command Line Tools). No Xcode needed.
 
@@ -33,106 +34,89 @@ func drawIcon(size: CGFloat) {
     let plate = rect.insetBy(dx: inset, dy: inset)
     let plateRadius = plate.width * 0.2237 // Apple's continuous-corner proportion
 
-    // Backing plate: a deep slate so the coloured notes read at 16pt.
+    // Backing plate: a deep night-sky blue, so glass bubbles have something to
+    // catch the light against — the app's tiles float over your desktop the same way.
     let platePath = NSBezierPath(roundedRect: plate, xRadius: plateRadius, yRadius: plateRadius)
     NSGradient(
         colors: [
-            NSColor(calibratedWhite: 0.20, alpha: 1),
-            NSColor(calibratedWhite: 0.09, alpha: 1)
+            NSColor(calibratedRed: 0.17, green: 0.20, blue: 0.36, alpha: 1),
+            NSColor(calibratedRed: 0.06, green: 0.07, blue: 0.15, alpha: 1)
         ]
     )?.draw(in: platePath, angle: -90)
 
-    // Rim light along the top edge, matching the tiles' glass treatment.
+    // Rim light along the edge, matching the bar's glass.
     platePath.lineWidth = max(size * 0.005, 0.5)
-    NSColor(calibratedWhite: 1, alpha: 0.16).setStroke()
+    NSColor(calibratedWhite: 1, alpha: 0.14).setStroke()
     platePath.stroke()
 
-    // Three notes, largest first — the same left-to-right ageing the grid shows.
-    struct Note {
-        let frame: CGRect
-        let progress: Double
-    }
-
+    // Three bubbles of different sizes, tinted by the traffic light they stand
+    // for. Drawn back to front. The menu bar icon (`MenuBarIcon.swift`) uses the
+    // same arrangement — keep the two in step.
     let unit = plate.width
-    let notes = [
-        // Big fresh note, upper left.
-        Note(
-            frame: CGRect(
-                x: plate.minX + unit * 0.13,
-                y: plate.minY + unit * 0.40,
-                width: unit * 0.44,
-                height: unit * 0.44
-            ),
-            progress: 0.0
-        ),
-        // Ageing note, right.
-        Note(
-            frame: CGRect(
-                x: plate.minX + unit * 0.61,
-                y: plate.minY + unit * 0.47,
-                width: unit * 0.30,
-                height: unit * 0.30
-            ),
-            progress: 0.52
-        ),
-        // Overdue note, lower middle.
-        Note(
-            frame: CGRect(
-                x: plate.minX + unit * 0.28,
-                y: plate.minY + unit * 0.13,
-                width: unit * 0.36,
-                height: unit * 0.36
-            ),
-            progress: 1.0
-        )
-    ]
-
-    for note in notes {
-        let radius = note.frame.width * TileCornerRatio
-        let path = NSBezierPath(roundedRect: note.frame, xRadius: radius, yRadius: radius)
-
-        // Drop shadow so the notes lift off the plate.
-        NSGraphicsContext.saveGraphicsState()
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.black.withAlphaComponent(0.45)
-        shadow.shadowBlurRadius = size * 0.02
-        shadow.shadowOffset = NSSize(width: 0, height: -size * 0.008)
-        shadow.set()
-
-        NSGradient(
-            colors: [
-                agingColour(progress: note.progress),
-                agingColour(progress: note.progress, saturation: 0.88, brightness: 0.66)
-            ]
-        )?.draw(in: path, angle: -55)
-        NSGraphicsContext.restoreGraphicsState()
-
-        // Specular highlight across the top of each note.
-        NSGraphicsContext.saveGraphicsState()
-        path.addClip()
-        let gloss = NSRect(
-            x: note.frame.minX,
-            y: note.frame.midY,
-            width: note.frame.width,
-            height: note.frame.height / 2
-        )
-        NSGradient(
-            colors: [
-                NSColor.white.withAlphaComponent(0.34),
-                NSColor.white.withAlphaComponent(0.0)
-            ]
-        )?.draw(in: gloss, angle: -90)
-        NSGraphicsContext.restoreGraphicsState()
-
-        // Rim.
-        path.lineWidth = max(size * 0.004, 0.4)
-        NSColor.white.withAlphaComponent(0.5).setStroke()
-        path.stroke()
+    func at(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+        CGPoint(x: plate.minX + unit * x, y: plate.minY + unit * y)
     }
+    drawBubble(centre: at(0.74, 0.70), radius: unit * 0.17, progress: 0.62, size: size) // ageing
+    drawBubble(centre: at(0.76, 0.28), radius: unit * 0.11, progress: 1.0, size: size)  // overdue
+    drawBubble(centre: at(0.40, 0.42), radius: unit * 0.27, progress: 0.0, size: size)  // fresh
 }
 
-/// Kept in step with `TileStyle.cornerRatio` in the app.
-let TileCornerRatio: CGFloat = 0.26
+/// One glass bubble: a tinted sphere lit from the top left, with a bright curved
+/// reflection, a pin-point highlight, and a faint bounce of light opposite.
+func drawBubble(centre: CGPoint, radius r: CGFloat, progress: Double, size: CGFloat) {
+    let circle = NSBezierPath(ovalIn: NSRect(x: centre.x - r, y: centre.y - r, width: 2 * r, height: 2 * r))
+
+    // Lift off the plate.
+    NSGraphicsContext.saveGraphicsState()
+    let shadow = NSShadow()
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.5)
+    shadow.shadowBlurRadius = size * 0.03
+    shadow.shadowOffset = NSSize(width: 0, height: -size * 0.012)
+    shadow.set()
+    agingColour(progress: progress, saturation: 0.85, brightness: 0.45).setFill()
+    circle.fill()
+    NSGraphicsContext.restoreGraphicsState()
+
+    // The sphere: bright and pale where the light hits, deep at the far edge.
+    NSGradient(
+        colors: [
+            agingColour(progress: progress, saturation: 0.30, brightness: 1.0),
+            agingColour(progress: progress, saturation: 0.72, brightness: 0.92),
+            agingColour(progress: progress, saturation: 0.92, brightness: 0.52)
+        ],
+        atLocations: [0, 0.5, 1],
+        colorSpace: .deviceRGB
+    )?.draw(in: circle, relativeCenterPosition: NSPoint(x: -0.4, y: 0.42))
+
+    // A soap film's edge: brighter at the rim, so it reads as a shell, not a ball.
+    NSGraphicsContext.saveGraphicsState()
+    circle.addClip()
+    let rim = NSBezierPath(ovalIn: NSRect(x: centre.x - r, y: centre.y - r, width: 2 * r, height: 2 * r))
+    rim.lineWidth = r * 0.12
+    NSColor(calibratedWhite: 1, alpha: 0.30).setStroke()
+    rim.stroke()
+    NSGraphicsContext.restoreGraphicsState()
+
+    func arc(from start: CGFloat, to end: CGFloat, at fraction: CGFloat, width: CGFloat, alpha: CGFloat) {
+        let path = NSBezierPath()
+        path.appendArc(withCenter: centre, radius: r * fraction, startAngle: start, endAngle: end)
+        path.lineWidth = r * width
+        path.lineCapStyle = .round
+        NSColor(calibratedWhite: 1, alpha: alpha).setStroke()
+        path.stroke()
+    }
+
+    // The reflection: a curved streak of window-light across the upper left…
+    arc(from: 112, to: 162, at: 0.70, width: 0.13, alpha: 0.92)
+    // …a pin-point glint just beyond it…
+    let glint = r * 0.085
+    let glintAngle = 96 * CGFloat.pi / 180
+    let glintCentre = CGPoint(x: centre.x + cos(glintAngle) * r * 0.70, y: centre.y + sin(glintAngle) * r * 0.70)
+    NSColor(calibratedWhite: 1, alpha: 0.95).setFill()
+    NSBezierPath(ovalIn: NSRect(x: glintCentre.x - glint, y: glintCentre.y - glint, width: 2 * glint, height: 2 * glint)).fill()
+    // …and light bouncing back off the far side.
+    arc(from: -62, to: -18, at: 0.78, width: 0.07, alpha: 0.38)
+}
 
 // MARK: - Rasterising
 
