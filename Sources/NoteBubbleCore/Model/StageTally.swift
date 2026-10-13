@@ -28,8 +28,8 @@ struct StageTally: Equatable {
         self.overdue = overdue
     }
 
-    init(of notes: [BubbleNode], at now: Date) {
-        notes.forEachNode { add(Aging.stage(forDays: $0.ageInDays(at: now))) }
+    init(of notes: [BubbleNode], at now: Date, window: AgeWindow = .standard) {
+        notes.forEachNode { add(window.stage(forDays: $0.ageInDays(at: now))) }
     }
 
     mutating func add(_ stage: Aging.Stage) {

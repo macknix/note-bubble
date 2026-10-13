@@ -420,6 +420,14 @@ final class BubbleStore: ObservableObject {
         return true
     }
 
+    /// Sets how long notes on a board take to go overdue. The standard week is
+    /// stored as no setting at all, so the file only says something when it differs.
+    func setAgeWindow(_ window: AgeWindow, for id: UUID) {
+        guard let index = workspaces.firstIndex(where: { $0.id == id }) else { return }
+        workspaces[index].overdueAfterDays = window == .standard ? nil : window.overdueAfterDays
+        scheduleSave()
+    }
+
     func renameWorkspace(_ id: UUID, to name: String) {
         guard let index = workspaces.firstIndex(where: { $0.id == id }) else { return }
         workspaces[index].name = name

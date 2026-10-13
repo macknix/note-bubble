@@ -46,7 +46,8 @@ extension BubbleGrid {
         // to the machine's own answer means a bubble can only be in the air while a
         // drag is genuinely in progress.
         if let cargo = flight.cargo, let centre = flight.centreInViewport, tileGesture.isDragging {
-            TileFace(node: cargo.node, size: cargo.size, now: store.now, isDragging: true)
+            TileFace(node: cargo.node, size: cargo.size, now: store.now,
+                     window: store.currentWorkspace.window, isDragging: true)
             // Over a dot the tile condenses, so the dot it is about to land on isn't
             // hidden underneath it — and so that "this is leaving" is visible before
             // it goes.

@@ -8,14 +8,14 @@ import SwiftUI
 /// decoratively; see `BarStyle`.
 enum AgingPalette {
     /// Hue sweeps 0.33 (green) → 0.0 (red). Halfway through the week lands on amber.
-    static func color(forDays days: Double) -> Color {
-        Color(hue: hue(forDays: days), saturation: 0.72, brightness: 0.92)
+    static func color(forDays days: Double, in window: AgeWindow = .standard) -> Color {
+        Color(hue: hue(forDays: days, in: window), saturation: 0.72, brightness: 0.92)
     }
 
     /// Deeper shade of the same hue, for the gradient's far corner and for text
     /// that sits on a white chip over the tile.
-    static func shadeColor(forDays days: Double) -> Color {
-        Color(hue: hue(forDays: days), saturation: 0.88, brightness: 0.66)
+    static func shadeColor(forDays days: Double, in window: AgeWindow = .standard) -> Color {
+        Color(hue: hue(forDays: days, in: window), saturation: 0.88, brightness: 0.66)
     }
 
     /// The colour that stands for a whole stage — a count badge, a workspace dot.
@@ -27,8 +27,8 @@ enum AgingPalette {
         shadeColor(forDays: representativeDays(of: stage))
     }
 
-    private static func hue(forDays days: Double) -> Double {
-        0.33 * (1 - Aging.progress(forDays: days))
+    private static func hue(forDays days: Double, in window: AgeWindow) -> Double {
+        0.33 * (1 - window.progress(forDays: days))
     }
 
     /// Where in the week each stage's colour is taken from. Fresh is the green a

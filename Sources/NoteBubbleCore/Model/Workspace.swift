@@ -14,11 +14,24 @@ struct Workspace: Identifiable, Codable, Hashable {
     var id: UUID
     var name: String
     var notes: [BubbleNode]
+    /// This board's own time to overdue, in days; nil means the standard week.
+    ///
+    /// Optional, and stored as a plain number, so a file from before boards had
+    /// windows reads unchanged and one written now still opens in an older build
+    /// (which ignores the key).
+    var overdueAfterDays: Double?
 
-    init(id: UUID = UUID(), name: String = Workspace.defaultName, notes: [BubbleNode] = []) {
+    init(id: UUID = UUID(), name: String = Workspace.defaultName, notes: [BubbleNode] = [],
+         overdueAfterDays: Double? = nil) {
         self.id = id
         self.name = name
         self.notes = notes
+        self.overdueAfterDays = overdueAfterDays
+    }
+
+    /// How fast this board's notes age.
+    var window: AgeWindow {
+        overdueAfterDays.map(AgeWindow.init(overdueAfterDays:)) ?? .standard
     }
 
     /// Same contract as `BubbleNode.displayName`: a workspace can legitimately be
@@ -38,7 +51,7 @@ struct Workspace: Identifiable, Codable, Hashable {
     /// is coloured by `worst`: a board gone red while you are looking at another one
     /// is exactly what the traffic lights exist to say.
     func tally(at now: Date) -> StageTally {
-        StageTally(of: notes, at: now)
+        StageTally(of: notes, at: now, window: window)
     }
 }
 

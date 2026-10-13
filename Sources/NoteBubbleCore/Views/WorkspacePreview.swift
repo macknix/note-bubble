@@ -18,7 +18,7 @@ struct WorkspacePreview: View {
 
         ZStack(alignment: .topLeading) {
             ForEach(Array(workspace.notes.enumerated()), id: \.element.id) { index, node in
-                TileFace(node: node, size: plan.size(at: index), now: now)
+                TileFace(node: node, size: plan.size(at: index), now: now, window: workspace.window)
                     .position(plan.restingCentre(at: index))
             }
         }

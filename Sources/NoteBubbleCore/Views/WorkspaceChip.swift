@@ -56,6 +56,7 @@ struct WorkspaceChip: View {
             Divider()
             Button("New workspace") { withAnimation(Motion.reflow) { _ = store.addWorkspace() } }
             Button("Rename “\(workspace.displayName)”") { store.renamingWorkspaceID = workspace.id }
+            AgeWindowMenu(store: store, workspace: workspace)
             if store.hasMultipleWorkspaces {
                 Divider()
                 Button("Delete “\(workspace.displayName)”", role: .destructive) {

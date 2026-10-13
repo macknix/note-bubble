@@ -9,6 +9,7 @@ struct BubbleTile: View {
     let size: CGSize
     /// What time it is, for the age — `BubbleStore.now`, never `Date()`.
     let now: Date
+    let window: AgeWindow
     let isEditing: Bool
     let isDragging: Bool
     let pressProgress: CGFloat
@@ -22,14 +23,14 @@ struct BubbleTile: View {
     @State private var original = ""
     @FocusState private var focused: Bool
 
-    private var shade: Color { AgingPalette.shadeColor(forDays: node.ageInDays(at: now)) }
+    private var shade: Color { AgingPalette.shadeColor(forDays: node.ageInDays(at: now), in: window) }
 
     var body: some View {
-        TileFace(node: node, size: size, now: now, isDragging: isDragging, pressProgress: pressProgress) {
+        TileFace(node: node, size: size, now: now, window: window, isDragging: isDragging, pressProgress: pressProgress) {
             if isEditing {
                 editor
             } else {
-                TileLabel(node: node, now: now)
+                TileLabel(node: node, now: now, window: window)
             }
             if hovering && !isEditing && !isDragging { renameButton }
         }
@@ -45,7 +46,7 @@ struct BubbleTile: View {
 
     /// "3 days old, ageing, 2 sub-bubbles" — colour and the little "3d" in words.
     private var spokenState: String {
-        let stage = Aging.stage(forDays: node.ageInDays(at: now))
+        let stage = window.stage(forDays: node.ageInDays(at: now))
         var parts = [Aging.spokenAge(from: node.createdAt, now: now), stage.name]
         let inside = node.children.count
         if inside > 0 { parts.append(inside == 1 ? "1 sub-bubble" : "\(inside) sub-bubbles") }

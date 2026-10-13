@@ -285,6 +285,38 @@ enum WorkspaceTests {
             Check.equal(store.everywhere.overdue, 3, "the clock moving is seen too")
         }
 
+        Check.suite("Workspaces — each board ages at its own pace") {
+            let fortnight = AgeWindow(overdueAfterDays: 14)
+            Check.equal(fortnight.stage(forDays: 5), .fresh, "on a two-week board, five days is still fresh")
+            Check.equal(fortnight.stage(forDays: 6), .aging, "six days is ageing — the week's proportions, stretched")
+            Check.equal(fortnight.stage(forDays: 13.9), .aging, "still ageing just short of a fortnight")
+            Check.equal(fortnight.stage(forDays: 14), .overdue, "and overdue at fourteen days")
+            Check.equal(AgeWindow.standard.stage(forDays: 7), Aging.stage(forDays: 7), "the standard window is the old week")
+            Check.equal(AgeWindow.presets.map(\.label), ["3 days", "1 week", "2 weeks", "1 month", "3 months"],
+                        "the menu offers these")
+
+            let url = tempURL()
+            defer { try? FileManager.default.removeItem(at: url) }
+            let store = BubbleStore(fileURL: url)
+            let tenDaysAgo = store.now.addingTimeInterval(-10 * 86_400)
+            store.replaceAll(with: [BubbleNode(text: "slow project", createdAt: tenDaysAgo)])
+            let slow = store.currentWorkspaceID
+            Check.equal(store.stageCounts.overdue, 1, "ten days is overdue on a standard board")
+
+            store.setAgeWindow(AgeWindow(overdueAfterDays: 30), for: slow)
+            Check.equal(store.stageCounts.overdue, 0, "but not on a board given a month")
+            Check.equal(store.stageCounts.fresh, 1, "where it is still fresh")
+            Check.equal(store.everywhere.overdue, 0, "and the pill and menu bar agree")
+
+            store.saveNow()
+            let reloaded = BubbleStore(fileURL: url)
+            Check.equal(reloaded.currentWorkspace.window, AgeWindow(overdueAfterDays: 30), "a board's window is saved")
+
+            store.setAgeWindow(.standard, for: slow)
+            Check.nil_(store.currentWorkspace.overdueAfterDays, "the standard week is stored as no setting at all")
+            Check.equal(store.stageCounts.overdue, 1, "and the note is overdue again")
+        }
+
         Check.suite("Workspaces — deleting") {
             let (store, url) = makeStore()
             defer { try? FileManager.default.removeItem(at: url) }
