@@ -80,6 +80,10 @@ struct MinimisedPill: View {
             Button("Quit Note Bubble") { NSApp.terminate(nil) }
         }
         .help(tooltip)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(tooltip)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { onExpand() }
     }
 
     /// Rounded square rather than a circle, matching the tiles it stands in for.

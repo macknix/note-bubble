@@ -33,7 +33,7 @@ extension BubbleGrid {
                 // It arrives from the side it lives on and leaves the same way, which
                 // is what makes previewing feel like moving along the shelf of boards
                 // rather than dealing cards onto it.
-                .transition(.move(edge: previewDirection > 0 ? .trailing : .leading))
+                .transition(Motion.move(previewDirection > 0 ? .trailing : .leading))
         }
     }
 
@@ -41,6 +41,7 @@ extension BubbleGrid {
     /// than tracked with `onChange` because the transition is decided during the
     /// very render the switch causes, and `onChange` fires after it.
     var slide: AnyTransition {
+        guard !Motion.reduceMotion else { return .opacity }
         let forwards = store.switchDirection > 0
         return .asymmetric(
             insertion: .move(edge: forwards ? .trailing : .leading).combined(with: .opacity),

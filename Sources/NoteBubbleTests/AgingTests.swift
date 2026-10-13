@@ -45,6 +45,17 @@ enum AgingTests {
 
             Check.close(Motion.popHold.seconds, 0.55, "a Duration converts to seconds for the animation APIs")
 
+            let spoken: [(Double, String)] = [
+                (0, "written today"), (1, "written yesterday"), (2, "2 days old"), (7, "1 week old"),
+                (14, "2 weeks old"), (30, "1 month old"), (90, "3 months old"), (365, "1 year old"), (800, "2 years old")
+            ]
+            for (days, expected) in spoken {
+                Check.equal(Aging.spokenAge(from: now.addingTimeInterval(-days * 86_400), now: now),
+                            expected, "VoiceOver reads \(days) days as “\(expected)”")
+            }
+            Check.equal([Aging.Stage.fresh, .aging, .overdue].map(\.name), ["fresh", "ageing", "overdue"],
+                        "each stage has a name, for anything that cannot rely on colour")
+
             let node = BubbleNode(text: "x", createdAt: now.addingTimeInterval(-5 * 86_400))
             Check.close(node.ageInDays(at: now), 5, "ageInDays matches the creation date", tolerance: 0.000_1)
             Check.close(node.ageInDays(at: now.addingTimeInterval(2 * 86_400)), 7,

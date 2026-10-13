@@ -210,6 +210,15 @@ pulses when it isn't zero. The menu bar icon and the minimised pill show an over
 count too — theirs covers every board, since when the panel is shut there's no board
 in front of you.
 
+### Accessibility
+
+Every tile works with VoiceOver: it reads the note, how old it is and how many
+sub-bubbles it holds, and its actions open, rename, reset, move or pop it. Turning
+on **Reduce motion** in System Settings → Accessibility → Display swaps the springs
+and slides for gentle fades. Overdue notes carry a small **!** as well as turning
+red. Right-click a tile and choose **Move to** to send it to another workspace
+without dragging.
+
 ## Pop sounds
 
 Five bubble pops by Universfield from Pixabay live in `Resources/Sounds/`, one

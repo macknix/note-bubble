@@ -62,7 +62,7 @@ struct GlassBar: View {
         HStack(spacing: 6) {
             if !store.isAtRoot {
                 GlassIconButton(systemImage: "chevron.left", help: "Back", action: store.goUp)
-                    .transition(.scale.combined(with: .opacity))
+                    .transition(Motion.grow)
             }
             WorkspaceChip(store: store, panelState: panelState, onRequestDelete: onDeleteWorkspace)
             if !store.isAtRoot { breadcrumb }
@@ -79,7 +79,7 @@ struct GlassBar: View {
                 .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
                 .panelDraggable(drag, isDragging: $isDragging)
         }
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .transition(Motion.move(.top).combined(with: .opacity))
     }
 
     private var controls: some View {
@@ -92,14 +92,14 @@ struct GlassBar: View {
                     help: store.undoLabel.map { "Undo “\($0)” (⌘Z)" } ?? "Undo (⌘Z)",
                     action: store.undo
                 )
-                .transition(.scale.combined(with: .opacity))
+                .transition(Motion.grow)
             }
 
             // Only worth offering when there is more than one bubble to jumble.
             if store.visible.count > 1 {
                 GlassIconButton(systemImage: "shuffle", help: "Shuffle the bubbles", action: shuffle)
                     .rotationEffect(.degrees(shuffleSpin))
-                    .transition(.scale.combined(with: .opacity))
+                    .transition(Motion.grow)
             }
 
             GlassIconButton(

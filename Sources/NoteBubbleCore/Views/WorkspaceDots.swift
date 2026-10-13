@@ -34,6 +34,8 @@ struct WorkspaceDots: View {
                 }
                 .buttonStyle(.plain)
                 .help(tooltip(for: workspace))
+                .accessibilityLabel(summary(for: workspace))
+                .accessibilityAddTraits(isCurrent ? .isSelected : [])
                 // The board you are already on is not a destination, so its dot
                 // neither grows a ring nor accepts a tile.
                 .background { if isDropping && !isCurrent { targetReporter(for: workspace) } }

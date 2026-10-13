@@ -138,6 +138,14 @@ struct TileLabel: View {
             // float in the top-right corner, which collided with left-aligned
             // text on the first line.
             HStack(spacing: 4) {
+                // Overdue says so in a shape as well as a colour, for anyone who
+                // cannot tell this red from the green it started as.
+                if Aging.stage(forDays: node.ageInDays(at: now)) == .overdue {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(.trailing, -2)
+                }
                 Text(Aging.relativeAge(from: node.createdAt, now: now))
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(.white.opacity(0.85))

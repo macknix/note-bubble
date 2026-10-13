@@ -35,6 +35,21 @@ struct BubbleTile: View {
         }
         .onHover { hovering = $0 }
         .animation(Motion.hover, value: hovering)
+        // One element for VoiceOver, read as the note and then its state. While
+        // editing, the text field has to be reachable on its own, so it is left be.
+        .accessibilityElement(children: isEditing ? .contain : .ignore)
+        .accessibilityLabel(node.displayName)
+        .accessibilityValue(spokenState)
+        .accessibilityHint("Actions open, rename, move or pop it")
+    }
+
+    /// "3 days old, ageing, 2 sub-bubbles" — colour and the little "3d" in words.
+    private var spokenState: String {
+        let stage = Aging.stage(forDays: node.ageInDays(at: now))
+        var parts = [Aging.spokenAge(from: node.createdAt, now: now), stage.name]
+        let inside = node.children.count
+        if inside > 0 { parts.append(inside == 1 ? "1 sub-bubble" : "\(inside) sub-bubbles") }
+        return parts.joined(separator: ", ")
     }
 
     private var editor: some View {

@@ -45,6 +45,8 @@ struct StatusHandle: View {
         .animation(Motion.lift, value: isDragging)
         .panelDraggable(drag, isDragging: $isDragging)
         .help(summary)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(summary)
     }
 
     private var isEmpty: Bool {
@@ -63,7 +65,7 @@ struct StatusHandle: View {
 
     private func badge(_ count: Int, stage: Aging.Stage) -> some View {
         StageBadge(count: count, stage: stage)
-            .transition(.scale.combined(with: .opacity))
+            .transition(Motion.grow)
     }
 }
 

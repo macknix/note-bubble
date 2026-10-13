@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Every animation and delay in the app, in one place.
@@ -6,20 +7,52 @@ import SwiftUI
 /// the interface feel subtly inconsistent — two springs that should have matched
 /// had drifted apart. Tune the feel here, not at the call sites.
 enum Motion {
+    // MARK: Reduce Motion
+
+    /// System Settings → Accessibility → Display → Reduce motion. Read live, so
+    /// changing it takes effect without a relaunch.
+    ///
+    /// Under it, everything here that *moves* things — springs, slides, scaling in
+    /// — becomes a short fade, and the pop burst loses its flying shards. What
+    /// things look like does not change, only how they get there.
+    static var reduceMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    private static let fade = Animation.easeInOut(duration: 0.18)
+
+    /// Slides in from `edge` — or, under Reduce Motion, only fades.
+    static func move(_ edge: Edge) -> AnyTransition {
+        reduceMotion ? .opacity : .move(edge: edge)
+    }
+
+    /// Scales up out of nothing as it fades in — or, under Reduce Motion, only fades.
+    static var grow: AnyTransition {
+        reduceMotion ? .opacity : .scale.combined(with: .opacity)
+    }
+
     // MARK: Animations
 
     /// Tiles settling into new slots during a rearrange.
-    static let reflow = Animation.spring(response: 0.34, dampingFraction: 0.74)
+    static var reflow: Animation {
+        reduceMotion ? fade : .spring(response: 0.34, dampingFraction: 0.74)
+    }
     /// A tile changing size as its note is written.
-    static let resize = Animation.spring(response: 0.3, dampingFraction: 0.78)
+    static var resize: Animation {
+        reduceMotion ? fade : .spring(response: 0.3, dampingFraction: 0.78)
+    }
     /// Picking a tile up and putting it down.
-    static let lift = Animation.spring(response: 0.3, dampingFraction: 0.7)
+    static var lift: Animation {
+        reduceMotion ? fade : .spring(response: 0.3, dampingFraction: 0.7)
+    }
     /// Hover highlights and other small reveals.
     static let hover = Animation.easeOut(duration: 0.14)
     /// Overlays arriving and leaving.
     static let overlay = Animation.easeOut(duration: 0.16)
     /// The toast sliding up from the bottom edge.
-    static let toast = Animation.spring(response: 0.32, dampingFraction: 0.8)
+    static var toast: Animation {
+        reduceMotion ? fade : .spring(response: 0.32, dampingFraction: 0.8)
+    }
 
     // MARK: Durations
 

@@ -46,7 +46,7 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | Ageing thresholds | `Model/Aging.swift` |
 | Ageing colours, and the colour each stage stands for | `Views/AgingPalette.swift` |
 | How often ages refresh on a board left alone | `Support/AgeClock.swift` |
-| Any animation or delay | `Support/Motion.swift` — all of them live here |
+| Any animation or delay, and Reduce Motion | `Support/Motion.swift` — all of them live here |
 | Tile sizing, column count, packing | `Layout/GridLayout.swift` |
 | Where every tile sits for one render | `Layout/LayoutPlan.swift` |
 | Label font, tile padding | `Layout/TileText.swift` (measurement depends on these) |
@@ -875,6 +875,22 @@ bar badge. So `ageInDays(at:)`, `relativeAge(from:now:)`, `overdueCount(at:)` an
 `worstStage(at:)` all take the time explicitly — which is also what lets the tests
 say exactly what time it is. Anything that stamps a note with the real time (`addBubble`,
 `touch`) calls `advanceClock()` too, so a fresh note never reads as from the future.
+
+### Accessibility
+
+Everything a pointer does to a tile has a VoiceOver equivalent, because holding,
+dragging and aiming at a dot cannot be done without one. Each tile is a single
+element — the note as its label, "3 days old, ageing, 2 sub-bubbles" as its value
+(`Aging.spokenAge`, `Stage.name`) — with **the context menu as its actions**:
+`accessibilityActions` reuses `contextMenu(...)`, so the two cannot drift apart and
+a parent still asks before it pops. That menu gained **Move to** for the same reason:
+filing a note had been drag-only.
+
+**Reduce Motion is honoured in `Motion`, not at call sites.** Animations and
+transitions there are computed, and under the setting springs become a short fade,
+`Motion.move(_:)` and `Motion.grow` become plain opacity, and the pop burst drops its
+shards. Use those rather than `.move(edge:)` or `.scale` directly. Overdue tiles
+also carry a glyph, so the one state that matters most does not rest on red alone.
 
 ### App lifecycle
 
