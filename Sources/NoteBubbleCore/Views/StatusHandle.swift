@@ -10,7 +10,7 @@ import SwiftUI
 /// The grip glyph is what says "drag me"; the counts are what say "here's the
 /// state". Neither has to do both jobs.
 struct StatusHandle: View {
-    let counts: (fresh: Int, aging: Int, overdue: Int)
+    let counts: StageTally
     let drag: PanelDrag
 
     @State private var isDragging = false
@@ -48,7 +48,7 @@ struct StatusHandle: View {
     }
 
     private var isEmpty: Bool {
-        counts.fresh + counts.aging + counts.overdue == 0
+        counts.total == 0
     }
 
     /// Spelled out in words, since the colours alone can't say what they mean.

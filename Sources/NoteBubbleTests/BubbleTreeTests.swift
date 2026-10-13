@@ -65,5 +65,29 @@ enum BubbleTreeTests {
             Check.isFalse(missing.removeNode(withID: UUID()), "reports when there was nothing to remove")
             Check.equal(missing.flattened.count, 4, "and changes nothing")
         }
+
+        Check.suite("Stage tallies") {
+            let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+            func note(_ text: String, daysOld: Double, _ children: [BubbleNode] = []) -> BubbleNode {
+                BubbleNode(text: text, createdAt: now.addingTimeInterval(-daysOld * 86_400), children: children)
+            }
+            let tree = [
+                note("fresh", daysOld: 1, [note("ageing child", daysOld: 4, [note("overdue grandchild", daysOld: 9)])]),
+                note("also fresh", daysOld: 0)
+            ]
+
+            let tally = StageTally(of: tree, at: now)
+            Check.equal(tally, StageTally(fresh: 2, aging: 1, overdue: 1), "every depth is counted, once")
+            Check.equal(tally.total, 4, "the total is the sum")
+            Check.equal(tally.worst, .overdue, "the worst stage is overdue if anything is")
+            Check.equal(StageTally(of: [note("a", daysOld: 4), note("b", daysOld: 0)], at: now).worst, .aging,
+                        "ageing when nothing is overdue")
+            Check.nil_(StageTally(of: [], at: now).worst, "and nothing for an empty board")
+            Check.equal(tally + tally, StageTally(fresh: 4, aging: 2, overdue: 2), "tallies add up across boards")
+
+            var visited = 0
+            tree.forEachNode { _ in visited += 1 }
+            Check.equal(visited, tree.flattened.count, "forEachNode visits what flattened would hold")
+        }
     }
 }

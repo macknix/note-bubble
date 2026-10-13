@@ -120,7 +120,7 @@ struct RootView: View {
     }
 
     private func deletionMessage(for workspace: Workspace) -> String {
-        let count = workspace.notes.flattened.count
+        let count = workspace.tally(at: store.now).total
         let bubbles = count == 1 ? "1 bubble" : "\(count) bubbles"
         return "\(bubbles) go with it. ⌘Z puts the whole workspace back."
     }
