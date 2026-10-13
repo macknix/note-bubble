@@ -83,10 +83,14 @@ final class PanelController: NSObject, NSWindowDelegate {
 
         // The panel is only as tall as its contents need, so adding or popping a
         // bubble resizes it. `objectWillChange` fires *before* the mutation lands,
-        // hence the hop to the next turn of the run loop to read the new state.
-        storeObserver = store.objectWillChange.sink { [weak self] _ in
-            Task { @MainActor in self?.fitToContent() }
-        }
+        // so the fit has to wait for the next turn of the run loop to read the new
+        // state. A one-frame debounce does that and also coalesces bursts — typing,
+        // undo — into one fit instead of a new `Task` per change.
+        storeObserver = store.objectWillChange
+            .debounce(for: .milliseconds(16), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                MainActor.assumeIsolated { self?.fitToContent() }
+            }
 
         // A tile landing is the other moment the panel may owe itself a resize: the
         // board may have changed under it while the fitting above was held off.
