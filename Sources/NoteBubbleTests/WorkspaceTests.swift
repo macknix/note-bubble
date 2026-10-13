@@ -198,6 +198,45 @@ enum WorkspaceTests {
                           "and a note cannot be filed onto the board it is already on")
         }
 
+        Check.suite("Workspaces — undo keeps what happened afterwards") {
+            let (store, url) = makeStore()
+            defer { try? FileManager.default.removeItem(at: url) }
+
+            store.renameWorkspace(store.currentWorkspaceID, to: "Home")
+            named(store, ["stays", "travels"])
+            let home = store.currentWorkspaceID
+            let work = store.addWorkspace(named: "Work")
+            store.renamingWorkspaceID = nil
+            named(store, ["work note"])
+            store.selectWorkspace(home)
+
+            // Filed, then edited and joined by another note on the board it went to.
+            let travels = store.visible[1].id
+            store.move(travels, toWorkspace: work)
+            store.selectWorkspace(work)
+            store.updateText("travels, edited on Work", for: travels)
+            named(store, ["written on Work since"])
+
+            store.undo()
+            Check.equal(store.currentWorkspaceID, home, "undoing a filing returns to the board it left")
+            Check.equal(store.visible.map(\.text), ["stays", "travels, edited on Work"],
+                        "bringing the note back as it is now, edits and all")
+            store.selectWorkspace(work)
+            Check.equal(store.visible.map(\.text), ["work note", "written on Work since"],
+                        "and leaving the other board's later notes where they are")
+
+            // A board deleted, then more written elsewhere: both survive the undo.
+            store.removeWorkspace(work)
+            named(store, ["written on Home since"])
+            store.undo()
+            Check.equal(store.workspaces.map(\.name), ["Home", "Work"],
+                        "undoing a deletion puts the board back in its place")
+            Check.equal(store.currentWorkspaceID, work, "and returns you to it")
+            store.selectWorkspace(home)
+            Check.equal(store.visible.map(\.text), ["stays", "travels, edited on Work", "written on Home since"],
+                        "without losing what was written after it went")
+        }
+
         Check.suite("Workspaces — deleting") {
             let (store, url) = makeStore()
             defer { try? FileManager.default.removeItem(at: url) }

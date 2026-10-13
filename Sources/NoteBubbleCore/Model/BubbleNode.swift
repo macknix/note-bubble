@@ -22,9 +22,13 @@ struct BubbleNode: Identifiable, Codable, Hashable {
         text.isEmpty ? "Untitled" : text
     }
 
-    /// Whole days since the note was written. Drives the traffic-light colour.
-    var ageInDays: Double {
-        Date().timeIntervalSince(createdAt) / 86_400
+    /// Days since the note was written, as of `now`. Drives the traffic-light colour.
+    ///
+    /// `now` is passed in rather than read from the system clock, so that the age
+    /// shown changes when the store's clock ticks — see `BubbleStore.now` — and so
+    /// tests can say exactly what time it is.
+    func ageInDays(at now: Date) -> Double {
+        now.timeIntervalSince(createdAt) / 86_400
     }
 
     /// Total notes contained below this one, at any depth.
@@ -75,6 +79,32 @@ extension Array where Element == BubbleNode {
             if let found = node.children.node(withID: id) { return found }
         }
         return nil
+    }
+
+    /// Where a node sits: the ids of its ancestors from the receiver down, and its
+    /// index among its siblings. What undo needs to put a note back where it was.
+    func location(of id: UUID) -> (parentPath: [UUID], index: Int)? {
+        if let index = firstIndex(where: { $0.id == id }) { return ([], index) }
+        for node in self {
+            if let found = node.children.location(of: id) {
+                return ([node.id] + found.parentPath, found.index)
+            }
+        }
+        return nil
+    }
+
+    /// The longest prefix of `path` that still leads somewhere. A level recorded
+    /// earlier may have been popped since; the answer is then its nearest surviving
+    /// ancestor rather than nowhere.
+    func resolvedPrefix(of path: [UUID]) -> [UUID] {
+        var level = self
+        var resolved: [UUID] = []
+        for id in path {
+            guard let node = level.first(where: { $0.id == id }) else { break }
+            resolved.append(id)
+            level = node.children
+        }
+        return resolved
     }
 
     /// Every note in the tree, flattened — used for the overdue count on the pill.

@@ -77,21 +77,43 @@ final class BubbleStore: ObservableObject {
 
     // MARK: - Undo
 
-    /// A snapshot of every board plus where the user was standing when it was taken.
-    /// Snapshots rather than inverse operations: the tree is small, destroying
-    /// writing is rare, and restoring a snapshot cannot drift out of sync with the
-    /// model the way a hand-written inverse can.
+    /// What it takes to reverse one destructive action **against the state as it is
+    /// now** — not a copy of the whole app as it was.
     ///
-    /// It holds *all* the workspaces, not just the current one, because deleting a
-    /// whole board is undoable and there would otherwise be nowhere to put it back.
-    private struct Snapshot {
-        let workspaces: [Workspace]
-        let currentIndex: Int
-        let path: [UUID]
-        let label: String
+    /// Undo used to be snapshots of every workspace, restored wholesale. That made it
+    /// impossible to get wrong in one direction and silently destructive in the
+    /// other: popping a note and then writing for ten minutes meant ⌘Z brought the
+    /// note back and threw the ten minutes away. Each case below therefore carries
+    /// only what the action took, and is put back into whatever is there today —
+    /// with every lookup by id, so later edits, additions and reorders survive.
+    private enum UndoAction {
+        /// A note and its subtree, and where it sat.
+        case pop(BubbleNode, from: NodeLocation)
+        /// The order a level had before it was jumbled.
+        case shuffle(workspace: UUID, parentPath: [UUID], order: [UUID])
+        /// A note filed onto another board, and where it came from.
+        case file(UUID, from: NodeLocation, to: UUID)
+        /// A whole board, and where it sat on the shelf.
+        case removeWorkspace(Workspace, index: Int)
     }
 
-    private var undoStack: [Snapshot] = []
+    /// Where a note sat, by ids rather than by indices into a particular tree.
+    private struct NodeLocation {
+        let workspace: UUID
+        let parentPath: [UUID]
+        let index: Int
+    }
+
+    private struct UndoRecord {
+        let action: UndoAction
+        let label: String
+        /// Where the user was standing when it happened, so undoing returns them
+        /// there and the note reappears in front of them.
+        let workspace: UUID
+        let path: [UUID]
+    }
+
+    private var undoStack: [UndoRecord] = []
     private static let undoLimit = 30
 
     /// Describes what ⌘Z would put back, for the toast and the menu hint.
@@ -99,28 +121,85 @@ final class BubbleStore: ObservableObject {
 
     var canUndo: Bool { !undoStack.isEmpty }
 
-    private func recordUndo(_ label: String) {
+    private func recordUndo(_ action: UndoAction, label: String) {
         undoStack.append(
-            Snapshot(workspaces: workspaces, currentIndex: currentIndex, path: path, label: label)
+            UndoRecord(action: action, label: label, workspace: currentWorkspaceID, path: path)
         )
         if undoStack.count > Self.undoLimit { undoStack.removeFirst() }
         undoLabel = label
     }
 
-    /// Restores the last snapshot, returning to the board and the level it was taken
-    /// at so an undone pop reappears where the user can see it.
+    /// Reverses the most recent destructive action, then returns to the board and
+    /// level it happened on so what came back is in front of you.
+    ///
+    /// Nothing done since is touched. Where the place something came from has itself
+    /// gone — its parent popped in the meantime — it lands at the nearest surviving
+    /// ancestor rather than nowhere.
     func undo() {
-        guard let snapshot = undoStack.popLast() else { return }
+        guard let record = undoStack.popLast() else { return }
         editingID = nil
         renamingWorkspaceID = nil
-        // Boards, index and path are restored together, so both are valid by
-        // construction — there is no moment at which the path points into a board
-        // that isn't there.
-        workspaces = snapshot.workspaces
-        currentIndex = snapshot.currentIndex
-        path = snapshot.path
+
+        switch record.action {
+        case let .pop(node, from):
+            insert(node, at: from)
+
+        case let .shuffle(workspace, parentPath, order):
+            guard let index = workspaceIndex(workspace) else { break }
+            let resolved = workspaces[index].notes.resolvedPrefix(of: parentPath)
+            guard resolved == parentPath else { break }
+            workspaces[index].notes.mutateChildren(at: parentPath[...]) { children in
+                let rank = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
+                // Notes the shuffle never saw — added since — keep their places at the end.
+                let known = children.filter { rank[$0.id] != nil }
+                    .sorted { rank[$0.id]! < rank[$1.id]! }
+                children = known + children.filter { rank[$0.id] == nil }
+            }
+
+        case let .file(id, from, destination):
+            // The note as it is *now*, edits made on the other board included.
+            guard let target = workspaceIndex(destination),
+                  let node = workspaces[target].notes.node(withID: id)
+            else { break }
+            workspaces[target].notes.removeNode(withID: id)
+            insert(node, at: from)
+
+        case let .removeWorkspace(workspace, index):
+            guard workspaceIndex(workspace.id) == nil else { break }
+            let current = currentWorkspaceID
+            workspaces.insert(workspace, at: min(index, workspaces.count))
+            currentIndex = workspaceIndex(current) ?? currentIndex
+        }
+
+        returnTo(workspace: record.workspace, path: record.path)
         undoLabel = undoStack.last?.label
         scheduleSave()
+    }
+
+    private func workspaceIndex(_ id: UUID) -> Int? {
+        workspaces.firstIndex { $0.id == id }
+    }
+
+    /// Puts a note back where it was, or as near as the tree now allows. Never
+    /// duplicates one that is somehow already back.
+    private func insert(_ node: BubbleNode, at location: NodeLocation) {
+        guard let index = workspaceIndex(location.workspace) ?? workspaces.indices.first,
+              workspaces[index].notes.node(withID: node.id) == nil
+        else { return }
+        let parent = workspaces[index].notes.resolvedPrefix(of: location.parentPath)
+        // If the parent has gone, the old index means nothing at its ancestor; append.
+        let slot = parent == location.parentPath ? location.index : Int.max
+        workspaces[index].notes.mutateChildren(at: parent[...]) { children in
+            children.insert(node, at: min(slot, children.count))
+        }
+    }
+
+    private func returnTo(workspace: UUID, path target: [UUID]) {
+        if let index = workspaceIndex(workspace), index != currentIndex {
+            switchDirection = index > currentIndex ? 1 : -1
+            currentIndex = index
+        }
+        path = currentNotes.resolvedPrefix(of: target)
     }
 
     init(fileURL: URL? = nil) {
@@ -157,12 +236,29 @@ final class BubbleStore: ObservableObject {
     /// height to the panel, and the two must never disagree about whether it's there.
     var showsPlaceRow: Bool { !isAtRoot || hasMultipleWorkspaces }
 
+    /// The time every age in the app is measured against.
+    ///
+    /// Held here rather than read from the system clock at render time, because a
+    /// render only happens when something changes — and on a widget left alone for
+    /// days, nothing does. Ages read straight off `Date()` froze at whatever the last
+    /// edit was: a note could go overdue overnight and the pill still say green.
+    /// `AgeClock` advances this as time passes; being `@Published`, that re-renders
+    /// every tile and count and refreshes the menu bar badge.
+    @Published private(set) var now = Date()
+
+    /// Moves `now` on. Called by `AgeClock`, and by anything that stamps a note with
+    /// the real time, so that note never reads as written in the future.
+    func advanceClock(to date: Date = Date()) {
+        guard date > now else { return }
+        now = date
+    }
+
     /// How the whole tree is distributed across the traffic lights. Drives the
     /// status handle in the top bar, which is the only place all three are shown.
     var stageCounts: (fresh: Int, aging: Int, overdue: Int) {
         var counts = (fresh: 0, aging: 0, overdue: 0)
         for note in root.flattened {
-            switch Aging.stage(forDays: note.ageInDays) {
+            switch Aging.stage(forDays: note.ageInDays(at: now)) {
             case .fresh: counts.fresh += 1
             case .aging: counts.aging += 1
             case .overdue: counts.overdue += 1
@@ -181,7 +277,7 @@ final class BubbleStore: ObservableObject {
     var everywhere: (notes: Int, overdue: Int) {
         workspaces.reduce(into: (notes: 0, overdue: 0)) { totals, workspace in
             totals.notes += workspace.notes.flattened.count
-            totals.overdue += workspace.overdueCount
+            totals.overdue += workspace.overdueCount(at: now)
         }
     }
 
@@ -283,10 +379,15 @@ final class BubbleStore: ObservableObject {
     func move(_ id: UUID, toWorkspace target: UUID) -> Bool {
         guard target != currentWorkspaceID,
               let destination = workspaces.firstIndex(where: { $0.id == target }),
-              let node = root.node(withID: id)
+              let node = root.node(withID: id),
+              let (parentPath, index) = root.location(of: id)
         else { return false }
 
-        recordUndo(node.displayName)
+        recordUndo(
+            .file(id, from: NodeLocation(workspace: currentWorkspaceID, parentPath: parentPath, index: index),
+                  to: target),
+            label: node.displayName
+        )
         if editingID == id { editingID = nil }
         currentNotes.removeNode(withID: id)
         workspaces[destination].notes.append(node)
@@ -313,7 +414,7 @@ final class BubbleStore: ObservableObject {
         if renamingWorkspaceID == id { renamingWorkspaceID = nil }
         guard let index = workspaces.firstIndex(where: { $0.id == id }) else { return }
 
-        recordUndo(workspaces[index].displayName)
+        recordUndo(.removeWorkspace(workspaces[index], index: index), label: workspaces[index].displayName)
         workspaces.remove(at: index)
 
         if index < currentIndex {
@@ -378,6 +479,7 @@ final class BubbleStore: ObservableObject {
     /// Adds an empty bubble at the current level and puts it straight into edit mode.
     @discardableResult
     func addBubble(text: String = "") -> UUID {
+        advanceClock()
         let node = BubbleNode(text: text)
         currentNotes.mutateChildren(at: path[...]) { $0.append(node) }
         editingID = node.id
@@ -401,8 +503,13 @@ final class BubbleStore: ObservableObject {
     /// `path` made that silently do nothing. It is still the *current workspace's*
     /// tree: a note on another board is not something the grid can be showing.
     func pop(_ id: UUID) {
-        guard let node = root.node(withID: id) else { return }
-        recordUndo(node.displayName)
+        guard let node = root.node(withID: id),
+              let (parentPath, index) = root.location(of: id)
+        else { return }
+        recordUndo(
+            .pop(node, from: NodeLocation(workspace: currentWorkspaceID, parentPath: parentPath, index: index)),
+            label: node.displayName
+        )
         currentNotes.removeNode(withID: id)
         if editingID == id { editingID = nil }
         // Standing inside the bubble that just went means backing out to its parent.
@@ -439,7 +546,8 @@ final class BubbleStore: ObservableObject {
     /// Takes a generator so the tests can be deterministic; callers use the default.
     func shuffle(using generator: inout some RandomNumberGenerator) {
         guard visible.count > 1 else { return }
-        recordUndo("shuffle")
+        recordUndo(.shuffle(workspace: currentWorkspaceID, parentPath: path, order: visible.map(\.id)),
+                   label: "shuffle")
         var shuffled = visible.shuffled(using: &generator)
         // A shuffle that changes nothing is a wasted click; nudge it.
         if shuffled.map(\.id) == visible.map(\.id) {
@@ -473,6 +581,7 @@ final class BubbleStore: ObservableObject {
             guard let index = children.firstIndex(where: { $0.id == id }) else { return }
             children[index].createdAt = Date()
         }
+        advanceClock()
         scheduleSave()
     }
 

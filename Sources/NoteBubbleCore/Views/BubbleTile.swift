@@ -9,6 +9,8 @@ import SwiftUI
 struct BubbleTile: View {
     let node: BubbleNode
     let size: CGSize
+    /// What time it is, for the age — `BubbleStore.now`, never `Date()`.
+    let now: Date
     let isEditing: Bool
     let isDragging: Bool
     let pressProgress: CGFloat
@@ -22,7 +24,7 @@ struct BubbleTile: View {
     @State private var original = ""
     @FocusState private var focused: Bool
 
-    private var days: Double { node.ageInDays }
+    private var days: Double { node.ageInDays(at: now) }
     private var tint: Color { Aging.color(forDays: days) }
     private var shade: Color { Aging.shadeColor(forDays: days) }
 
@@ -172,7 +174,7 @@ struct BubbleTile: View {
                 // float in the top-right corner, which collided with left-aligned
                 // text on the first line.
                 HStack(spacing: 4) {
-                    Text(Aging.relativeAge(from: node.createdAt))
+                    Text(Aging.relativeAge(from: node.createdAt, now: now))
                         .font(.system(size: 8, weight: .bold))
                         .foregroundStyle(.white.opacity(0.85))
                     Spacer(minLength: 0)

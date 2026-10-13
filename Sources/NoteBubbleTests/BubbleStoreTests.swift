@@ -244,6 +244,37 @@ enum BubbleStoreTests {
             Check.equal(store.path, [outer], "undo returns to the level the pop happened at")
             Check.equal(store.visible.map(\.text), ["inner"], "the nested note is back")
 
+            // Undo puts back what the action took and nothing else. It used to restore
+            // a snapshot of everything, which threw away whatever had been written since.
+            store.replaceAll(with: [])
+            named(store, ["first", "doomed", "last"])
+            store.pop(store.visible[1].id)
+            let last = store.visible[1].id
+            store.updateText("last, edited", for: last)
+            named(store, ["added since"])
+            store.undo()
+            Check.equal(store.visible.map(\.text), ["first", "doomed", "last, edited", "added since"],
+                        "undoing a pop keeps every edit and note made after it")
+
+            // Shuffling, then adding: the order comes back, and the new note stays.
+            var generator = SeededGenerator(seed: 7)
+            store.shuffle(using: &generator)
+            named(store, ["newest"])
+            store.undo()
+            Check.equal(store.visible.map(\.text),
+                        ["first", "doomed", "last, edited", "added since", "newest"],
+                        "undoing a shuffle restores the order and keeps notes added since")
+
+            // Two pops, undone in turn, each land back in their own place.
+            let a = store.visible[0].id, c = store.visible[2].id
+            store.pop(a)
+            store.pop(c)
+            store.undo()
+            store.undo()
+            Check.equal(store.visible.map(\.text),
+                        ["first", "doomed", "last, edited", "added since", "newest"],
+                        "successive undos put each note back where it was")
+
             // Blank throwaway notes must not occupy the undo stack.
             let (fresh, freshURL) = makeStore()
             defer { try? FileManager.default.removeItem(at: freshURL) }
@@ -293,6 +324,36 @@ enum BubbleStoreTests {
         }
 
         unusableFiles()
+        clock()
+    }
+
+    private static func clock() {
+        Check.suite("BubbleStore — ages move on without anything being edited") {
+            let (store, url) = makeStore()
+            defer { try? FileManager.default.removeItem(at: url) }
+
+            // Just short of a week old by the store's own clock.
+            let nearlyAWeek = store.now.addingTimeInterval(-6.9 * 86_400)
+            store.replaceAll(with: [BubbleNode(text: "slipping", createdAt: nearlyAWeek)])
+            Check.equal(store.stageCounts.overdue, 0, "not yet overdue")
+            Check.equal(store.everywhere.overdue, 0, "anywhere")
+
+            var published = 0
+            let watch = store.objectWillChange.sink { published += 1 }
+            store.advanceClock(to: store.now.addingTimeInterval(86_400))
+            Check.isTrue(published > 0, "the clock moving is a change the views and menu bar hear about")
+            Check.equal(store.stageCounts.overdue, 1, "and a day later the note is overdue, untouched")
+            Check.equal(store.everywhere.overdue, 1, "on the pill and the menu bar too")
+            Check.equal(store.currentWorkspace.worstStage(at: store.now), .overdue, "and on its board's dot")
+
+            published = 0
+            store.advanceClock(to: store.now.addingTimeInterval(-3_600))
+            Check.equal(published, 0, "the clock never runs backwards")
+            watch.cancel()
+
+            store.touch(store.visible[0].id)
+            Check.equal(store.stageCounts.fresh, 1, "touching a note still resets it to fresh")
+        }
     }
 
     /// A folder of its own, since setting a file aside writes a sibling beside it.
