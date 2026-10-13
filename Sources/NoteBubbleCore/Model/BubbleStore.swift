@@ -59,8 +59,21 @@ final class BubbleStore: ObservableObject {
         }
     }
 
-    private let fileURL: URL
+    private let file: BubbleFile
     private var saveTask: Task<Void, Never>?
+
+    /// False when the file on disk must not be written over: it belongs to a newer
+    /// build, or it could not be read and could not be moved out of the way either.
+    /// Edits still work for the session; they just are not saved.
+    private var canSave = true
+    /// Whether this session has written yet. The first write backs the file up.
+    private var hasSaved = false
+
+    /// Something the user needs to know about their notes file — it could not be
+    /// read, or will not be saved to. Shown in the panel until dismissed.
+    @Published private(set) var fileNotice: String?
+
+    func dismissFileNotice() { fileNotice = nil }
 
     // MARK: - Undo
 
@@ -111,7 +124,7 @@ final class BubbleStore: ObservableObject {
     }
 
     init(fileURL: URL? = nil) {
-        self.fileURL = fileURL ?? Self.defaultFileURL()
+        self.file = BubbleFile(url: fileURL ?? Self.defaultFileURL())
         // Replaced wholesale by `load()`; declared here because `workspaces` has no
         // meaningful empty state — the invariant is that there is always one.
         self.workspaces = [Workspace()]
@@ -476,12 +489,27 @@ final class BubbleStore: ObservableObject {
     /// Reads the file, in whatever shape it is in — a pre-workspace file is lifted
     /// into a single board by `BubbleDocument`, and rewritten in the current shape
     /// on the next save.
+    ///
+    /// A file that cannot be used is never quietly treated as empty: that is what
+    /// used to let the next keystroke save an empty board over it. See `BubbleFile`.
     private func load() {
-        guard let data = try? Data(contentsOf: fileURL) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let document = try? decoder.decode(BubbleDocument.self, from: data) else { return }
-        adopt(document.normalised)
+        switch file.load() {
+        case .missing:
+            break
+        case .loaded(let document):
+            adopt(document.normalised)
+        case .tooNew(let version):
+            canSave = false
+            fileNotice = "Your notes were saved by a newer version of Note Bubble (format \(version)). "
+                + "They are untouched, but nothing you do here will be saved — update the app to get them back."
+        case .unreadable(let setAside?):
+            fileNotice = "Your notes file couldn't be read, so it was set aside as "
+                + "“\(setAside.lastPathComponent)” in the same folder. Nothing in it has been lost."
+        case .unreadable(nil):
+            canSave = false
+            fileNotice = "Your notes file couldn't be read or moved aside, so it has been left alone — "
+                + "nothing you do here will be saved over it."
+        }
     }
 
     private func adopt(_ document: BubbleDocument) {
@@ -499,25 +527,28 @@ final class BubbleStore: ObservableObject {
     /// Coalesces the rapid-fire saves that come from typing into one write.
     private func scheduleSave() {
         saveTask?.cancel()
+        guard canSave else { return }
         let snapshot = document
-        saveTask = Task { [fileURL] in
+        saveTask = Task {
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled else { return }
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            guard let data = try? encoder.encode(snapshot) else { return }
-            try? data.write(to: fileURL, options: .atomic)
+            write(snapshot)
         }
     }
 
     /// Forces a synchronous write — used on quit, where the debounce would never fire.
     func saveNow() {
         saveTask?.cancel()
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(document) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        guard canSave else { return }
+        write(document)
+    }
+
+    private func write(_ snapshot: BubbleDocument) {
+        do {
+            try file.save(snapshot, backingUp: !hasSaved)
+            hasSaved = true
+        } catch {
+            BubbleFile.logger.error("Could not save notes: \(error)")
+        }
     }
 }

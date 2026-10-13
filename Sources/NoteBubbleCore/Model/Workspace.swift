@@ -62,10 +62,14 @@ struct Workspace: Identifiable, Codable, Hashable {
 /// workspace — so an existing board survives the upgrade untouched and lands
 /// under `Workspace.defaultName`. The next save writes the current shape.
 struct BubbleDocument: Codable {
-    /// 1 was the bare array; 2 added workspaces. Nothing *reads* this — each shape
-    /// is recognised structurally — but a file that says what it is costs nothing
-    /// and makes the next migration easier to reason about.
+    /// 1 was the bare array; 2 added workspaces. Older shapes are recognised
+    /// structurally; the number is read only to refuse a file from a *newer* build,
+    /// which this one would otherwise half-read and then save over.
     static let currentVersion = 2
+
+    enum Failure: Error {
+        case tooNew(version: Int)
+    }
 
     var version: Int
     var workspaces: [Workspace]
@@ -87,6 +91,13 @@ struct BubbleDocument: Codable {
             return
         }
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Checked before anything else is decoded: a newer file may have changed
+        // the shape of everything below, and failing on that instead would read as
+        // corruption rather than as "this belongs to a newer build".
+        if let version = try? container.decode(Int.self, forKey: .version),
+           version > Self.currentVersion {
+            throw Failure.tooNew(version: version)
+        }
         self.init(
             workspaces: try container.decode([Workspace].self, forKey: .workspaces),
             currentID: try? container.decode(UUID.self, forKey: .currentID)

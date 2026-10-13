@@ -31,6 +31,13 @@ struct RootView: View {
                 drag: drag
             )
             BubbleGrid(store: store, panelState: panelState)
+                .overlay(alignment: .top) {
+                    if let notice = store.fileNotice {
+                        FileNoticeBanner(message: notice) {
+                            withAnimation(Motion.overlay) { store.dismissFileNotice() }
+                        }
+                    }
+                }
         }
         // No background behind the grid: the tiles float directly over whatever you
         // are working on. Only the bar is a surface.
