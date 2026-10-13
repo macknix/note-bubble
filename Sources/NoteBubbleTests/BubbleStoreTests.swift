@@ -244,6 +244,37 @@ enum BubbleStoreTests {
             Check.equal(store.path, [outer], "undo returns to the level the pop happened at")
             Check.equal(store.visible.map(\.text), ["inner"], "the nested note is back")
 
+            // Undo puts back what the action took and nothing else. It used to restore
+            // a snapshot of everything, which threw away whatever had been written since.
+            store.replaceAll(with: [])
+            named(store, ["first", "doomed", "last"])
+            store.pop(store.visible[1].id)
+            let last = store.visible[1].id
+            store.updateText("last, edited", for: last)
+            named(store, ["added since"])
+            store.undo()
+            Check.equal(store.visible.map(\.text), ["first", "doomed", "last, edited", "added since"],
+                        "undoing a pop keeps every edit and note made after it")
+
+            // Shuffling, then adding: the order comes back, and the new note stays.
+            var generator = SeededGenerator(seed: 7)
+            store.shuffle(using: &generator)
+            named(store, ["newest"])
+            store.undo()
+            Check.equal(store.visible.map(\.text),
+                        ["first", "doomed", "last, edited", "added since", "newest"],
+                        "undoing a shuffle restores the order and keeps notes added since")
+
+            // Two pops, undone in turn, each land back in their own place.
+            let a = store.visible[0].id, c = store.visible[2].id
+            store.pop(a)
+            store.pop(c)
+            store.undo()
+            store.undo()
+            Check.equal(store.visible.map(\.text),
+                        ["first", "doomed", "last, edited", "added since", "newest"],
+                        "successive undos put each note back where it was")
+
             // Blank throwaway notes must not occupy the undo stack.
             let (fresh, freshURL) = makeStore()
             defer { try? FileManager.default.removeItem(at: freshURL) }

@@ -237,9 +237,9 @@ Two consequences worth knowing:
   (`BubbleStore.everywhere`): a widget at rest that stayed quiet about a note rotting
   on the board you last opened a fortnight ago would be failing at its one job. The
   menu bar's Workspaces submenu breaks that total back down, board by board.
-- **The undo snapshot holds every workspace,** not just the current one, because
-  deleting a whole board is undoable and there would otherwise be nowhere to put it
-  back. Deleting a board with notes on it asks first (`ConfirmSheet`, in-panel, for
+- **Undo records name their board by id,** because an undo can be asked for from
+  any board, and deleting a whole board is undoable too — its record carries the
+  board itself and where it sat on the shelf. Deleting a board with notes on it asks first (`ConfirmSheet`, in-panel, for
   the same reason a pop confirmation is); an empty one just goes.
 
 A board created and then abandoned — never named, nothing written on it — is
@@ -642,19 +642,30 @@ synchronous — it returns on mouse-up — so `DragView.mouseDown` calls
 `windowDragEnded()` afterwards and the pill snaps on release, animated. The bar
 snaps live; the pill snaps as it lands.
 
-### Undo is snapshot-based, and only real destruction records
+### Undo reverses one action, and only real destruction records
 
-`BubbleStore` keeps a stack of snapshots (every workspace + `currentIndex` + `path`
-+ a label). Snapshots rather than inverse operations because the tree is small and
-destroying writing is rare — an inverse-op undo can drift out of sync with the
-model, a snapshot cannot. Restoring puts the board and `path` back too, so an
-undone pop reappears on the level *and the workspace* it happened at.
+`BubbleStore` keeps a stack of `UndoRecord`s. Each holds an `UndoAction` — just what
+the action took (the popped note and where it sat, a level's previous order, a filed
+note's origin, a deleted board and its index) — plus a label and where the user was
+standing. `undo()` puts that back into the tree **as it is now**, every lookup by id,
+then returns to the board and level it happened on so what came back is in front of
+you.
+
+**It used to restore a snapshot of every workspace, and that is the trap to avoid.**
+A snapshot cannot drift out of sync with the model, but it restores *everything*:
+popping a note and then writing for ten minutes meant ⌘Z brought the note back and
+silently threw the ten minutes away. The tests in "undo keeps what happened
+afterwards" exist to stop that returning. Where the place something came from has
+gone since — its parent popped — it lands at the nearest surviving ancestor
+(`resolvedPrefix(of:)`), appended rather than at an index that no longer means
+anything. A filed note is brought back *as it is now*, edits made on the other board
+included.
 
 Four things call `recordUndo`: `pop`, `shuffle`, `removeWorkspace`, and
 `move(_:toWorkspace:)` — nothing is destroyed by the last, but a note filed onto
 another board is just as hard to find again by hand. Filing records while the store
-is still on the board the note is leaving, which is what makes the snapshot return
-you to that board *and* that level rather than to wherever the note went.
+is still on the board the note is leaving, which is what makes undo return you to
+that board *and* that level rather than to wherever the note went.
 
 The two cleanup paths — `discardIfEmpty` for a never-written note and
 `discardWorkspaceIfUnused` for a never-named board — deliberately delete directly
