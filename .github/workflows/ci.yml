@@ -61,3 +61,10 @@ jobs:
           # A release download has to run on Intel Macs too.
           lipo -archs "$APP/Contents/MacOS/NoteBubble" | tr ' ' '\n' | sort | paste -sd' ' - | grep -qx 'arm64 x86_64'
           echo "bundle OK"
+
+      # The release packaging, so it cannot rot between releases. The app is
+      # already built, so this is mostly hdiutil.
+      - name: Package
+        run: |
+          ./Scripts/package.sh
+          (cd dist && shasum -a 256 -c SHA256SUMS.txt)
