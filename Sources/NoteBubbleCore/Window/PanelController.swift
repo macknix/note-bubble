@@ -22,14 +22,8 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
     /// Beyond this the grid scrolls rather than the panel swallowing the screen.
     private static let maximumBodyHeight: CGFloat = 560
 
-    /// Grace period before an unhovered panel folds back to the pill. Long enough
-    /// to cross a gap or overshoot an edge without the panel vanishing.
-    private static let collapseDelay: Duration = .milliseconds(450)
+    /// The two delays `HoverIntent` asks for. Each is cancelled by the other.
     private var collapseTask: Task<Void, Never>?
-
-    /// Dwell required before the pill opens, so merely sweeping the pointer across
-    /// it on the way somewhere else doesn't throw the grid open.
-    private static let expandDelay: Duration = .milliseconds(180)
     private var expandTask: Task<Void, Never>?
 
     private var storeObserver: AnyCancellable?
@@ -51,11 +45,8 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
     init(store: BubbleStore) {
         self.store = store
         // Defaults to on so nothing disappears for anyone who had no menu bar icon.
-        let defaults = UserDefaults.standard
-        if defaults.object(forKey: Self.pillDefaultsKey) == nil {
-            defaults.set(true, forKey: Self.pillDefaultsKey)
-        }
-        self.showsFloatingPill = defaults.bool(forKey: Self.pillDefaultsKey)
+        UserDefaults.standard.register(defaults: [Self.pillDefaultsKey: true])
+        self.showsFloatingPill = UserDefaults.standard.bool(forKey: Self.pillDefaultsKey)
 
         // Resting state is the pill, so the widget starts out of the way and the
         // grid appears only when reached for — back where it was last left, which
@@ -95,61 +86,27 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
                 Task { @MainActor in self?.fitToContent() }
             }
 
-        installSwipeMonitor()
-    }
-
-    deinit {
-        if let scrollMonitor { NSEvent.removeMonitor(scrollMonitor) }
+        swipeMonitor = SwipeMonitor(
+            window: panel,
+            // Nothing to swipe between or on, or the panel is spoken for mid-drag
+            // or mid-confirmation — the same holds the auto-collapse respects.
+            isEnabled: { [weak self] in
+                guard let self else { return false }
+                return !self.isMinimised && self.store.hasMultipleWorkspaces && !self.panelState.blocksAutoCollapse
+            },
+            onSwipe: { [weak self] decision in self?.carryOut(decision) ?? false }
+        )
     }
 
     // MARK: - Swiping between workspaces
 
-    private var scrollMonitor: Any?
-    private var swipe = WorkspaceSwipe()
+    private var swipeMonitor: SwipeMonitor?
 
-    /// Two-finger swipes arrive as scroll events, and they have to be intercepted
-    /// *before* the grid's `ScrollView` sees them — hence a local monitor rather
-    /// than a SwiftUI gesture, which would be layered underneath it.
-    ///
-    /// A local monitor is also the only way to be selective: returning the event
-    /// passes it through untouched, so vertical scrolling still scrolls the grid,
-    /// and only the one event that completes a horizontal swipe is swallowed.
-    private func installSwipeMonitor() {
-        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
-            // Scrolls anywhere else in the app — there is nowhere else, but a
-            // monitor sees everything the app receives — are none of our business.
-            guard event.window?.delegate === self else { return event }
-
-            let scroll = WorkspaceSwipe.Scroll(
-                deltaX: event.scrollingDeltaX,
-                deltaY: event.scrollingDeltaY,
-                isGestureStart: event.phase == .began,
-                isInverted: event.isDirectionInvertedFromDevice,
-                time: event.timestamp
-            )
-            // Monitors are delivered on the main thread; this is the same bridge
-            // `main.swift` uses to say so. Only the plain values above cross into
-            // it, so there is nothing here for concurrency checking to object to.
-            let consumed = MainActor.assumeIsolated { self?.consumeSwipe(scroll) ?? false }
-            return consumed ? nil : event
-        }
-    }
-
-    /// Whether this scroll turned out to be a workspace swipe.
-    private func consumeSwipe(_ scroll: WorkspaceSwipe.Scroll) -> Bool {
-        // Nothing to swipe between, or nothing to swipe on.
-        guard !isMinimised, store.hasMultipleWorkspaces else { return false }
-        // Mid-drag or mid-confirmation, the panel is spoken for — the same flag the
-        // auto-collapse checks, and for the same reason.
-        guard !panelState.blocksAutoCollapse else { return false }
-
-        switch swipe.handle(scroll) {
-        case .none:
-            return false
-        case .next:
-            return withAnimation(Motion.reflow) { store.goToNextWorkspace() }
-        case .previous:
-            return withAnimation(Motion.reflow) { store.goToPreviousWorkspace() }
+    private func carryOut(_ decision: WorkspaceSwipe.Decision) -> Bool {
+        switch decision {
+        case .none: false
+        case .next: withAnimation(Motion.reflow) { store.goToNextWorkspace() }
+        case .previous: withAnimation(Motion.reflow) { store.goToPreviousWorkspace() }
         }
     }
 
@@ -174,8 +131,7 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
     /// cannot see.
     func showWorkspace(at index: Int) {
         withAnimation(Motion.reflow) { store.selectWorkspace(at: index) }
-        expand(takeFocus: true)
-        fade(to: 1.0, quickly: true)
+        open()
     }
 
     /// Height the expanded panel wants for the notes currently on screen. Tiles are
@@ -203,82 +159,27 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
 
     // MARK: - Moving the panel
 
-    /// Where the panel and the pointer were when the current drag started, both in
-    /// screen coordinates.
-    private var dragAnchor: (window: NSPoint, mouse: NSPoint)?
+    /// Where the window goes while it is dragged; see `PanelMover`.
+    private lazy var mover = PanelMover(panel: panel, parking: parking)
 
-    /// Dragging is driven by a SwiftUI `DragGesture` on the status handle, but the
-    /// movement is computed here from `NSEvent.mouseLocation`.
-    ///
-    /// **Do not use the gesture's `translation`.** It is measured in the window's
-    /// own coordinate space, and this gesture moves that window: the pointer keeps
-    /// roughly the same window-relative position, translation collapses towards
-    /// zero, and the panel never moves. Screen coordinates are unaffected by the
-    /// window moving underneath them.
-    ///
-    /// AppKit's `performDrag` was tried twice before this and is not the answer
-    /// either — it needs the mouse-down to reach an `NSView` buried behind SwiftUI
-    /// content, which kept breaking on layering and first-mouse.
     func beginPanelDrag() {
-        dragAnchor = (window: panel.frame.origin, mouse: NSEvent.mouseLocation)
+        mover.begin()
         // A drag can wander anywhere; don't let leaving the panel fold it away.
         panelState.setHold(.panelDrag, true)
         collapseTask?.cancel()
     }
 
-    /// Snapping is applied live rather than on release, so the panel visibly jumps
-    /// flush and you can see it has taken. The position is recomputed from the
-    /// drag's start each time, so a snap never accumulates into a drift.
     func dragPanel() {
-        guard let start = dragAnchor else { return }
-        let mouse = NSEvent.mouseLocation
-        var frame = panel.frame
-        frame.origin = NSPoint(
-            x: start.window.x + (mouse.x - start.mouse.x),
-            y: start.window.y + (mouse.y - start.mouse.y)
-        )
-        panel.setFrameOrigin(parking.snapping(frame).origin)
+        mover.follow()
     }
 
     func endPanelDrag() {
-        dragAnchor = nil
         panelState.setHold(.panelDrag, false)
-        // Where it was dropped decides where the pill now rests and which way the
-        // panel opens from it. This handle is the bar, so an expanded panel parks by
-        // its top edge — see `PanelPlacement.init(draggedPanel:in:)`.
-        if isMinimised {
-            parking.park(pill: panel.frame)
-        } else {
-            parking.park(draggedPanel: panel.frame)
-        }
+        mover.end(isMinimised: isMinimised)
     }
 
-    /// The end of a `performDrag` on the minimised pill.
-    ///
-    /// That path is AppKit's, not SwiftUI's — it moves the window from inside its
-    /// own tracking loop, so there is nowhere to apply magnetism *during* the drag
-    /// without fighting it. Snapping on release instead, animated, still reads as
-    /// the edge pulling the pill in.
-    ///
-    /// A plain click arrives here too, so a move has to be proved before the anchor
-    /// is re-read. That click may well have *expanded* the panel, and resolving an
-    /// anchor from the expanded frame flips which corner the panel is parked in:
-    /// a pill near the middle reads as right-anchored, the panel it opens into
-    /// reaches further left and so reads as left-anchored, and minimising would
-    /// then fling the pill several hundred points across the screen.
     func windowDragEnded(from start: NSRect) {
-        guard isMinimised, panel.frame.size == start.size, panel.frame.origin != start.origin
-        else { return }
-
-        let snapped = parking.snapping(panel.frame)
-        if snapped != panel.frame {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.12
-                panel.animator().setFrame(snapped, display: true)
-            }
-        }
-        // Read from `snapped`, not `panel.frame`: the animator above hasn't landed.
-        parking.park(pill: snapped)
+        mover.pillDragEnded(from: start, isMinimised: isMinimised)
     }
 
     /// Hides the panel, leaving the menu bar icon behind to bring it back.
@@ -286,16 +187,7 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
     /// Deliberately *not* `NSApp.terminate`: closing the window should not end the
     /// app, or there is no way back short of relaunching it from Finder.
     func close() {
-        collapseTask?.cancel()
-        expandTask?.cancel()
-        isMinimised = true
-        panelState.isPinned = false
-        store.editingID = nil
-        store.renamingWorkspaceID = nil
-        swipe.reset()
-        show(pillView, sized: MinimisedPill.size)
-        parking.park(settledPill: panel.frame)
-        panel.orderOut(nil)
+        fold(hidingPill: true)
     }
 
     /// ⌘Z. Lives here because the panel routes key events to the controller.
@@ -367,36 +259,53 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
         panel.displayIfNeeded()
     }
 
-    /// The whole interaction model: the pill expands under the pointer and folds
-    /// back once it leaves.
+    /// The pointer arrived or left. What that means is `HoverIntent`'s decision.
     private func setHovering(_ hovering: Bool) {
-        if hovering {
-            collapseTask?.cancel()
-            collapseTask = nil
-        }
-
         // Expanded is always fully opaque; only the pill fades when unattended.
         let solid = !isMinimised || hovering || panelState.isPinned || store.isEditing
         fade(to: solid ? 1.0 : Self.idleAlpha, quickly: hovering)
+        handle(hovering ? .entered : .left)
+    }
 
-        if hovering {
-            if isMinimised { scheduleExpand() }
-        } else {
-            expandTask?.cancel()
-            expandTask = nil
-            scheduleCollapse()
+    private var hoverSituation: HoverIntent.Situation {
+        HoverIntent.Situation(
+            isMinimised: isMinimised,
+            isPinned: panelState.isPinned,
+            isEditing: store.isEditing,
+            isHeld: panelState.blocksAutoCollapse
+        )
+    }
+
+    private func handle(_ event: HoverIntent.Event) {
+        for effect in HoverIntent.effects(for: event, in: hoverSituation) {
+            switch effect {
+            case .scheduleExpand:
+                expandTask?.cancel()
+                expandTask = after(Motion.expandDelay) { $0.handle(.expandDelayElapsed) }
+            case .cancelExpand:
+                expandTask?.cancel()
+                expandTask = nil
+            case .scheduleCollapse:
+                collapseTask?.cancel()
+                collapseTask = after(Motion.collapseDelay) { $0.handle(.collapseDelayElapsed) }
+            case .cancelCollapse:
+                collapseTask?.cancel()
+                collapseTask = nil
+            case .expand:
+                // Hover must not make the panel key — that would divert your typing
+                // from whatever app you are actually working in.
+                expand(takeFocus: false)
+            case .minimise:
+                minimise()
+            }
         }
     }
 
-    private func scheduleExpand() {
-        expandTask?.cancel()
-        expandTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.expandDelay)
-            guard !Task.isCancelled, let self, self.isMinimised else { return }
-            // Hover must not make the panel key — that would divert your typing
-            // from whatever app you are actually working in. Only a click or an
-            // explicit command takes focus.
-            self.expand(takeFocus: false)
+    private func after(_ delay: Duration, _ body: @escaping (PanelController) -> Void) -> Task<Void, Never> {
+        Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self else { return }
+            body(self)
         }
     }
 
@@ -405,23 +314,8 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
     private func fade(to target: CGFloat, quickly: Bool) {
         guard abs(panel.alphaValue - target) > 0.001 else { return }
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = quickly ? 0.12 : 0.3
+            context.duration = quickly ? Motion.windowFadeIn : Motion.windowFadeOut
             panel.animator().alphaValue = target
-        }
-    }
-
-    private func scheduleCollapse() {
-        guard !isMinimised, !panelState.isPinned else { return }
-        collapseTask?.cancel()
-        collapseTask = Task { [weak self] in
-            try? await Task.sleep(for: Self.collapseDelay)
-            guard !Task.isCancelled, let self else { return }
-            // Re-check at fire time: any of these may have become true while waiting.
-            guard !self.panelState.isPinned,
-                  !self.store.isEditing,
-                  !self.panelState.blocksAutoCollapse
-            else { return }
-            self.minimise()
         }
     }
 
@@ -435,6 +329,13 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
 
     func minimise() {
         guard !isMinimised else { return }
+        fold(hidingPill: false)
+    }
+
+    /// Folds the panel back to the pill — and, when the pill is turned off or the
+    /// panel is being closed, hides that too, leaving the menu bar icon as the way
+    /// back in.
+    private func fold(hidingPill: Bool) {
         collapseTask?.cancel()
         expandTask?.cancel()
         isMinimised = true
@@ -443,16 +344,14 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
         store.renamingWorkspaceID = nil
         // A swipe left half-finished when the panel folded away must not be picked
         // up by the next one.
-        swipe.reset()
+        swipeMonitor?.reset()
         show(pillView, sized: MinimisedPill.size)
         // The resting spot is the one worth remembering across a quit.
         parking.park(settledPill: panel.frame)
-        // With the pill turned off, minimising hides the panel outright — the menu
-        // bar icon is then the only way back in, which is the point of the setting.
-        if showsFloatingPill {
-            fade(to: Self.idleAlpha, quickly: false)
-        } else {
+        if hidingPill || !showsFloatingPill {
             panel.orderOut(nil)
+        } else {
+            fade(to: Self.idleAlpha, quickly: false)
         }
     }
 
@@ -488,8 +387,7 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
             if !parking.isOnScreen(panel.frame), let icon = menuBar?.screenFrame {
                 moveBelow(icon)
             }
-            expand(takeFocus: true)
-            fade(to: 1.0, quickly: true)
+            open()
         } else {
             minimise()
         }
@@ -528,11 +426,17 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
     /// Global-hotkey entry point: open it for real (focus and all), or fold it away.
     func toggleVisible() {
         if isMinimised {
-            expand(takeFocus: true)
-            fade(to: 1.0, quickly: true)
+            open()
         } else {
             minimise()
         }
+    }
+
+    /// Opening on purpose — a click, a hotkey, a menu — rather than by hover: focus
+    /// and full opacity at once.
+    private func open() {
+        expand(takeFocus: true)
+        fade(to: 1.0, quickly: true)
     }
 
     func newBubble() {
@@ -561,7 +465,7 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
 
         if animated {
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.22
+                context.duration = Motion.windowResize
                 context.allowsImplicitAnimation = true
                 panel.animator().setFrame(frame, display: true)
             }

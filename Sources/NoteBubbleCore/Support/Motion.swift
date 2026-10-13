@@ -35,6 +35,21 @@ enum Motion {
     /// long enough that crossing one dot on the way to another doesn't flick through
     /// every board in between.
     static let workspacePreview: Duration = .milliseconds(260)
+
+    // MARK: The window
+
+    /// Dwell before the pill opens under the pointer — see `HoverIntent`.
+    static let expandDelay: Duration = .milliseconds(180)
+    /// Grace before an unhovered panel folds back to the pill.
+    static let collapseDelay: Duration = .milliseconds(450)
+    /// Window alpha changes, toward the pointer and away from it. AppKit
+    /// animations, so plain seconds.
+    static let windowFadeIn: TimeInterval = 0.12
+    static let windowFadeOut: TimeInterval = 0.3
+    /// The panel growing or shrinking to fit what is on it.
+    static let windowResize: TimeInterval = 0.22
+    /// The pill sliding flush against an edge after it is dropped.
+    static let pillSnap: TimeInterval = 0.12
 }
 
 extension Duration {
