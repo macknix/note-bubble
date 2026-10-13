@@ -87,7 +87,7 @@ plain JSON file in your own Application Support folder.
 | Move the widget | Drag **anywhere on the top bar** that isn't a button |
 | Close it | `✕` — stays in the menu bar, click the icon to reopen |
 | Minimise | Move the pointer away, Escape at the top level, or ⌘M |
-| Show / hide | **⌥Space** from anywhere, or click the menu bar icon |
+| Show / hide | **⌥Space** from anywhere (change it under *Keyboard shortcut…* in the menu bar icon's menu), or click the menu bar icon |
 | Quit for real | ⌘Q, or the menu bar menu |
 
 Right-click a tile for open, rename, **reset age to today**, and pop.
@@ -103,7 +103,8 @@ the count beside it, so the thing the traffic lights exist to tell you is visibl
 without opening anything.
 
 **Right-click the icon** for the version you are running, Open, a **Workspaces**
-submenu, *Show floating pill*, *Open at login*, *Mute pop sounds*, About and Quit. Picking a workspace there opens the panel on it, and
+submenu, *Show floating pill*, *Open at login*, *Keyboard shortcut…*, *Mute pop sounds*,
+About and Quit. If another app has already claimed the shortcut, that item says so. Picking a workspace there opens the panel on it, and
 any board with overdue notes says so beside its name — so a board you haven't
 looked at in a fortnight can still get your attention.
 

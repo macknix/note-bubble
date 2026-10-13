@@ -22,9 +22,10 @@ final class PanelState: ObservableObject {
         case panelDrag
         case popConfirmation
         case workspaceDeletion
+        case shortcutRecording
 
         /// Holds that belong to the view, and so go when the view does.
-        static let viewOwned: Set<Hold> = [.tileDrag, .popConfirmation, .workspaceDeletion]
+        static let viewOwned: Set<Hold> = [.tileDrag, .popConfirmation, .workspaceDeletion, .shortcutRecording]
     }
 
     /// Pinned means "stay open" — for when you are actually working in the panel
@@ -34,6 +35,9 @@ final class PanelState: ObservableObject {
     /// value handed in meant rebuilding the whole view to show it — which threw away
     /// the undo toast, any open confirmation and the scroll position with it.
     @Published var isPinned = false
+
+    /// The global-shortcut recorder is open over the panel.
+    @Published var isRecordingShortcut = false
 
     // MARK: - The undo toast
 
@@ -123,6 +127,7 @@ final class PanelState: ObservableObject {
     /// a confirmation nobody can see any more would stop it ever folding away.
     func forgetView() {
         holds.subtract(Hold.viewOwned)
+        isRecordingShortcut = false
         dismissToast()
         isDraggingTile = false
         hoveredWorkspace = nil

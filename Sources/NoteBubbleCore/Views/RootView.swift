@@ -4,6 +4,7 @@ import SwiftUI
 struct RootView: View {
     @ObservedObject var store: BubbleStore
     @ObservedObject var panelState: PanelState
+    let shortcut: GlobalShortcut
     let onClose: () -> Void
     let onHoverChange: (Bool) -> Void
     let onTogglePin: () -> Void
@@ -46,6 +47,17 @@ struct RootView: View {
         .coordinateSpace(name: PanelSpace.name)
         .onPreferenceChange(WorkspaceDropTargets.self) { panelState.workspaceDropTargets = $0 }
         .overlay { deletionConfirmation }
+        .overlay {
+            if panelState.isRecordingShortcut {
+                ShortcutRecorderSheet(shortcut: shortcut) {
+                    withAnimation(Motion.overlay) { panelState.isRecordingShortcut = false }
+                }
+            }
+        }
+        // Recording must survive the pointer wandering off the panel.
+        .onChange(of: panelState.isRecordingShortcut) { _, isOpen in
+            panelState.setHold(.shortcutRecording, isOpen)
+        }
         // An open confirmation must survive the pointer leaving the panel.
         .onChange(of: pendingDeletion != nil) { _, isOpen in
             panelState.setHold(.workspaceDeletion, isOpen)
