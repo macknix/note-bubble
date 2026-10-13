@@ -30,6 +30,6 @@ brew style /tmp/tap/Casks/note-bubble.rb
 ```
 
 The cask installs the zip rather than the DMG: Homebrew handles both, and the zip
-is smaller. Until the app is notarised (#30) the cask's caveats explain the
-first-launch "Open Anyway" step; it deliberately does not strip the quarantine
-flag on the user's behalf.
+is smaller. Note Bubble is deliberately not notarised (no paid Apple Developer
+account; see #30), so the cask's caveats explain the one-time "Open Anyway" step.
+It deliberately does not strip the quarantine flag on the user's behalf.
