@@ -502,10 +502,13 @@ final class BubbleStore: ObservableObject {
     /// confirmed after the user has navigated elsewhere, and tying removal to
     /// `path` made that silently do nothing. It is still the *current workspace's*
     /// tree: a note on another board is not something the grid can be showing.
-    func pop(_ id: UUID) {
+    /// Returns whether anything was popped, so the burst and the sound can be
+    /// withheld from a pop that found nothing to remove.
+    @discardableResult
+    func pop(_ id: UUID) -> Bool {
         guard let node = root.node(withID: id),
               let (parentPath, index) = root.location(of: id)
-        else { return }
+        else { return false }
         recordUndo(
             .pop(node, from: NodeLocation(workspace: currentWorkspaceID, parentPath: parentPath, index: index)),
             label: node.displayName
@@ -517,6 +520,7 @@ final class BubbleStore: ObservableObject {
             path.removeSubrange(depth...)
         }
         scheduleSave()
+        return true
     }
 
     /// Replaces the current workspace's tree and returns to the top level. Used for

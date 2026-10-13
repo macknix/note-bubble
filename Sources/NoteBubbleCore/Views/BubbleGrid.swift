@@ -20,10 +20,13 @@ struct BubbleGrid: View {
     // MARK: - Interaction state
 
     /// A pop held back pending confirmation, because the tile has notes inside it.
+    ///
+    /// Only the note and the grid's geometry: where the tile is gets worked out
+    /// again when the answer comes, since the board can be shuffled or added to
+    /// while the question is open.
     private struct PendingPop {
         let node: BubbleNode
-        let index: Int
-        let plan: LayoutPlan
+        let layout: GridLayout
     }
 
     @State private var tileGesture = TileGesture()
@@ -143,7 +146,12 @@ struct BubbleGrid: View {
             // view left to report the release.
             .onChange(of: store.currentWorkspaceID) { _, _ in
                 if tileGesture.isDragging { cancelDrag() }
+                dismissPendingPop()
             }
+            // A confirmation asks about a tile on the level in front of you. Going
+            // somewhere else — a breadcrumb, ⌘←, the menu bar — leaves it asking about
+            // something you can no longer see, so it goes.
+            .onChange(of: store.path) { _, _ in dismissPendingPop() }
         }
     }
 
@@ -273,7 +281,7 @@ struct BubbleGrid: View {
                 onCancel: { withAnimation(Motion.overlay) { self.pendingPop = nil } },
                 onConfirm: {
                     self.pendingPop = nil
-                    commitPop(pendingPop.node, at: pendingPop.index, plan: pendingPop.plan)
+                    commitPop(pendingPop.node, layout: pendingPop.layout)
                 }
             )
         }
@@ -363,7 +371,7 @@ struct BubbleGrid: View {
         Button("Rename") { store.editingID = node.id }
         Button("Reset age to today") { store.touch(node.id) }
         Divider()
-        Button("Pop", role: .destructive) { performPop(node, at: index, plan: plan) }
+        Button("Pop", role: .destructive) { performPop(node, at: index, plan: plan, layout: layout) }
     }
 
     // MARK: - The one gesture
@@ -416,7 +424,7 @@ struct BubbleGrid: View {
             case let .track(translation):
                 track(translation, context)
             case .pop:
-                performPop(context.node, at: context.index, plan: context.plan)
+                performPop(context.node, at: context.index, plan: context.plan, layout: context.layout)
             case .enter:
                 store.drillInto(context.node.id)
             case .drop:
@@ -614,7 +622,7 @@ struct BubbleGrid: View {
 
     /// Entry point for every pop, from a hold or from the context menu. Tiles
     /// holding unpopped bubbles divert to a confirmation instead of bursting.
-    private func performPop(_ node: BubbleNode, at index: Int, plan: LayoutPlan) {
+    private func performPop(_ node: BubbleNode, at index: Int, plan: LayoutPlan, layout: GridLayout) {
         tileGesture.consume()
 
         guard node.children.isEmpty else {
@@ -625,7 +633,7 @@ struct BubbleGrid: View {
             // again.
             clearDragState()
             withAnimation(Motion.overlay) {
-                pendingPop = PendingPop(node: node, index: index, plan: plan)
+                pendingPop = PendingPop(node: node, layout: layout)
             }
             return
         }
@@ -633,6 +641,11 @@ struct BubbleGrid: View {
     }
 
     /// Actually bursts a tile: particles, sound, removal, and the undo offer.
+    ///
+    /// The burst, the sound and the toast all wait on the store saying the note
+    /// really went. A pop that finds nothing to remove — the note was already gone,
+    /// or is on a board no longer in front of you — used to celebrate anyway, and
+    /// the toast's Undo then undid something else entirely.
     private func commitPop(_ node: BubbleNode, at index: Int, plan: LayoutPlan) {
         let size = plan.specs[index].size
         let burst = PopBurst(
@@ -642,9 +655,12 @@ struct BubbleGrid: View {
             color: Aging.color(forDays: node.ageInDays(at: store.now))
         )
 
+        guard store.pop(node.id) else {
+            endPress()
+            return
+        }
         bursts.append(burst)
         PopSounds.shared.play()
-        store.pop(node.id)
         endPress()
         showToast("Popped “\(node.displayName)”")
 
@@ -652,6 +668,23 @@ struct BubbleGrid: View {
             try? await Task.sleep(for: Motion.burstLifetime)
             bursts.removeAll { $0.id == burst.id }
         }
+    }
+
+    /// Commits a confirmed pop, measuring the tile where it is *now*.
+    private func commitPop(_ node: BubbleNode, layout: GridLayout) {
+        let nodes = store.visible
+        guard let index = nodes.firstIndex(where: { $0.id == node.id }) else {
+            // Not on the level in front of you, so there is nothing to burst from.
+            // Going elsewhere dismisses the question, so this should not happen.
+            endPress()
+            return
+        }
+        commitPop(node, at: index, plan: LayoutPlan(nodes: nodes, layout: layout))
+    }
+
+    private func dismissPendingPop() {
+        guard pendingPop != nil else { return }
+        withAnimation(Motion.overlay) { pendingPop = nil }
     }
 
     // MARK: - Toast
