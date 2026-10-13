@@ -105,6 +105,8 @@ final class MenuBarItem {
         pill.target = self
         menu.addItem(pill)
 
+        menu.addItem(loginItem)
+
         let mute = NSMenuItem(title: "Mute pop sounds", action: #selector(toggleMute), keyEquivalent: "")
         mute.state = PopSounds.shared.isMuted ? .on : .off
         mute.target = self
@@ -160,6 +162,30 @@ final class MenuBarItem {
     @objc private func newWorkspace() { actions?.newWorkspace() }
     @objc private func open() { actions?.toggleFromMenuBar() }
     @objc private func togglePill() { actions?.toggleFloatingPill() }
+    @objc private func toggleLoginItem() { LoginItem.toggle() }
+
+    /// Ticked when on; a dash while macOS waits for you to approve it in System
+    /// Settings, where choosing it again takes you.
+    private var loginItem: NSMenuItem {
+        let item = NSMenuItem(title: "Open at login", action: #selector(toggleLoginItem), keyEquivalent: "")
+        item.target = self
+        switch LoginItem.state {
+        case .on:
+            item.state = .on
+        case .awaitingApproval:
+            item.state = .mixed
+            item.toolTip = "Waiting for approval in System Settings → General → Login Items"
+        case .off:
+            item.state = .off
+        case .unavailable:
+            // No action rather than `isEnabled = false`: the menu auto-enables
+            // any item whose target answers its action, and would re-enable it.
+            item.action = nil
+            item.toolTip = "Only available in the built app"
+        }
+        return item
+    }
+
     @objc private func toggleMute() { PopSounds.shared.isMuted.toggle() }
     @objc private func quit() { NSApp.terminate(nil) }
 
