@@ -91,6 +91,46 @@ struct PanelPlacement: Equatable, Codable {
     }
 }
 
+extension PanelPlacement {
+    /// The frame a panel of `size` takes when it opens from the pill resting here.
+    ///
+    /// Normally that is simply hung off the parked corner, so a pill parked top-right
+    /// opens leftwards and downwards. But a pill can rest with its *top* corner
+    /// anchored low on the screen — the expanded panel parks by its top edge
+    /// wherever it is dropped — and then opening downwards runs off the bottom.
+    /// Clamping alone used to pull such a panel back up only as far as the screen's
+    /// edge, so it still hung down past the pill. Instead it **flips**: it opens
+    /// upwards from the pill's bottom edge, the way one parked in a bottom corner
+    /// would. The same in reverse for a bottom-anchored pill high on the screen.
+    ///
+    /// Whichever direction leaves less of the panel off-screen wins, so a screen too
+    /// short for either still gets the better of the two (and the clamp after).
+    /// The pill's own frame is never affected: at the resting size nothing flips,
+    /// so the pill still never moves.
+    func frame(size: CGSize, restingSize: CGSize, in visible: CGRect) -> CGRect {
+        let hanging = anchor.frame(size: size, at: corner)
+        let pill = anchor.frame(size: restingSize, at: corner)
+
+        let flipped: CGRect
+        switch anchor.vertical {
+        case .top:
+            guard hanging.minY < visible.minY else { return hanging }
+            flipped = PanelAnchor(horizontal: anchor.horizontal, vertical: .bottom)
+                .frame(size: size, at: CGPoint(x: corner.x, y: pill.minY))
+        case .bottom:
+            guard hanging.maxY > visible.maxY else { return hanging }
+            flipped = PanelAnchor(horizontal: anchor.horizontal, vertical: .top)
+                .frame(size: size, at: CGPoint(x: corner.x, y: pill.maxY))
+        }
+        return Self.overhang(of: flipped, in: visible) < Self.overhang(of: hanging, in: visible) ? flipped : hanging
+    }
+
+    /// How far a frame sticks out past the top and bottom of the screen.
+    private static func overhang(of frame: CGRect, in visible: CGRect) -> CGFloat {
+        max(0, visible.minY - frame.minY) + max(0, frame.maxY - visible.maxY)
+    }
+}
+
 /// Pure window geometry: which edges may snap, snapping to them, and clamping.
 ///
 /// No AppKit and no windows, so the awkward cases — a panel wider than its

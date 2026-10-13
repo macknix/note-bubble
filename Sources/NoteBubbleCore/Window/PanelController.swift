@@ -40,7 +40,7 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
 
     /// Where the panel sits and what frame it takes at any size. Everything
     /// positional goes through it — see `PanelParking`.
-    private let parking = PanelParking()
+    private let parking = PanelParking(restingSize: MinimisedPill.size)
 
     let shortcut: GlobalShortcut
 

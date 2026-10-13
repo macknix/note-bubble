@@ -24,8 +24,12 @@ final class PanelParking {
 
     private let defaults: UserDefaults
     private static let defaultsKey = "PanelPlacement"
+    /// The pill's size — what rests on the parked corner, and so what a panel too
+    /// tall to open one way opens the other way from.
+    private let restingSize: CGSize
 
-    init(defaults: UserDefaults = .standard) {
+    init(restingSize: CGSize, defaults: UserDefaults = .standard) {
+        self.restingSize = restingSize
         self.defaults = defaults
         self.placement = Self.restored(from: defaults) ?? Self.firstRun()
     }
@@ -39,7 +43,9 @@ final class PanelParking {
     /// `placement`. A tall panel that had to be nudged up the screen still folds back
     /// to the corner its pill was parked on.
     func frame(sized size: NSSize) -> NSRect {
-        clamped(placement.anchor.frame(size: size, at: placement.corner))
+        let pill = placement.anchor.frame(size: restingSize, at: placement.corner)
+        let visible = visibleFrame(for: pill)
+        return clamped(placement.frame(size: size, restingSize: restingSize, in: visible))
     }
 
     /// Pulls a frame back onto whichever screen it is mostly on.
