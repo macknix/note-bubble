@@ -69,13 +69,13 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | The workspace name and its menu | `Views/WorkspaceChip.swift` |
 | The workspace dots — the swipe's affordance, and the drop targets | `Views/WorkspaceDots.swift` |
 | What another board looks like mid-drag | `Views/WorkspacePreview.swift` |
-| Menu bar icon and its menu | `Window/MenuBarItem.swift` |
+| Menu bar icon and its menu | `Window/MenuBarIcon.swift` (the template image) and `Window/MenuBarItem.swift` |
 | What a tile looks like | `Views/TileFace.swift` (`BubbleTile` adds hover, rename and the editor) |
 | Tap / hold / drag behaviour | `Support/TileGesture.swift` decides; `Views/BubbleGrid+Drag.swift` carries it out |
 | Note data, undo | `Model/BubbleStore.swift` |
 | Reading and writing `bubbles.json`, backups | `Model/BubbleFile.swift` |
 | Asking before something destructive | `Views/ConfirmSheet.swift` |
-| App icon artwork | `Scripts/make-icon.swift` |
+| App icon artwork | `Scripts/make-icon.swift` — keep its three bubbles in step with `MenuBarIcon` |
 
 ## Invariants worth knowing before editing
 
@@ -171,7 +171,7 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
                            MinimisedPill, WindowDragArea
   Window/                  OverlayPanel, PanelController, PanelParking,
                            PanelPlacement, PanelState, PanelDrag, PanelCommands,
-                           PanelMover, SwipeMonitor,
+                           PanelMover, SwipeMonitor, MenuBarIcon,
                            MenuBarItem, HotKey
 Sources/NoteBubbleTests/   executable test suite + Harness
 Scripts/                   build-app.sh, package.sh, render-cask.sh, make-icon.swift,

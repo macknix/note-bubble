@@ -19,11 +19,8 @@ final class MenuBarItem {
         self.item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = item.button {
-            button.image = NSImage(
-                systemSymbolName: "circle.grid.2x2.fill",
-                accessibilityDescription: "Note Bubble"
-            )
-            button.image?.isTemplate = true
+            // The app icon's three bubbles, drawn as a template — see `MenuBarIcon`.
+            button.image = MenuBarIcon.image()
             button.imagePosition = .imageLeading
             button.target = self
             button.action = #selector(clicked)
