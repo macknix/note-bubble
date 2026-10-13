@@ -74,10 +74,28 @@ extension BubbleGrid {
         return DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.coordinateSpace))
             .onChanged { value in
                 apply(tileGesture.handle(.changed(id: node.id, translation: value.translation)), context)
+                watchForShake(value, context)
             }
             .onEnded { _ in
                 apply(tileGesture.handle(.ended(id: node.id)), context)
             }
+    }
+
+    /// Shaking a tile while carrying it resets its age to today, and it settles back
+    /// into its slot. Only while it is genuinely being dragged, and not while it is
+    /// over a workspace dot, where the same waggle means aiming at a board.
+    func watchForShake(_ value: DragGesture.Value, _ context: Context) {
+        guard tileGesture.isDragging(context.node.id), flight.hoveredWorkspace == nil else { return }
+        let time = value.time.timeIntervalSinceReferenceDate
+        guard shake.track(CGPoint(x: value.translation.width, y: value.translation.height), at: time)
+        else { return }
+
+        withAnimation(Motion.resize) { store.touch(context.node.id) }
+        // A felt click on a Force Touch trackpad, so you know it took.
+        NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+        // Consumed, not reset: the button is still down, and its next twitch must
+        // not lift the tile again. See `cancelDrag`.
+        withAnimation(Motion.reflow) { cancelDrag() }
     }
 
     /// What an effect needs to know to be carried out: which tile, and where
@@ -247,6 +265,7 @@ extension BubbleGrid {
     /// The split matters. Half of what ends a drag happens mid-press, with the mouse
     /// button still down: see `cancelDrag`.
     func clearDragState() {
+        shake.reset()
         cancelHold()
         previewTask?.cancel()
         previewTask = nil

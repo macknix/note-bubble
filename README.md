@@ -74,6 +74,7 @@ plain JSON file in your own Application Support folder.
 | **Pop a bubble** (done) | Press and hold — it swells, then bursts |
 | **Undo a pop** | **⌘Z**, the toast that appears, or ↩ in the bar |
 | **Rearrange** | Drag a tile; the others shuffle around it |
+| **Reset a bubble's age** | Pick it up and **shake it** — it turns green and drops back into place |
 | **Switch workspace** | **Two-finger swipe** across the panel, ⌘← / ⌘→, or click a dot |
 | **Move a bubble to another workspace** | Drag it onto that workspace's dot, and let go |
 | New workspace | ⌘⇧N, or *New workspace* in the workspace menu |
@@ -202,7 +203,7 @@ Tiles are dated from when you wrote them and shift colour continuously:
 - **Red** — a week or more
 
 Red means it's been sitting there long enough to deserve a decision. If a note is
-still legitimately live, right-click → *Reset age to today* puts it back to green
+still legitimately live, shake it — or right-click → *Reset age to today* — to put it back to green
 without retyping it.
 
 The badges at the top left of the bar count how many notes are in each state across
