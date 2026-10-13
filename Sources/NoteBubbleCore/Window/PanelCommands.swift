@@ -26,4 +26,8 @@ protocol MenuBarActions: AnyObject {
     /// Picking a board from the Workspaces submenu.
     func showWorkspace(at index: Int)
     func newWorkspace()
+    /// The shortcut that opens the panel from anywhere.
+    var shortcut: GlobalShortcut { get }
+    /// Opens the panel with the shortcut recorder over it.
+    func recordShortcut()
 }

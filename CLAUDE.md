@@ -57,7 +57,8 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | Two-finger swipe wiring | `Window/SwipeMonitor.swift` (the rules are `Support/WorkspaceSwipe.swift`) |
 | Where the panel sits: snapping, which way it opens | `Window/PanelParking.swift`, rules in `Window/PanelPlacement.swift` |
 | The pill's size | `Views/MinimisedPill.swift` |
-| Keyboard shortcuts | `Window/OverlayPanel.swift` (`PanelShortcut` maps keys, `PanelCommands` carries them out) and `Window/HotKey.swift` (⌥Space) |
+| Keyboard shortcuts | `Window/OverlayPanel.swift` (`PanelShortcut` maps keys, `PanelCommands` carries them out) and `Window/HotKey.swift` |
+| The global shortcut: which one, recording it, saying when it is taken | `App/GlobalShortcut.swift`, `Support/KeyCombo.swift`, `Views/ShortcutRecorderSheet.swift` |
 | Text-editing shortcuts (⌘C/⌘V/⌘A), and where ⌘Z goes | `App/MainMenu.swift` |
 | Workspaces: the boards themselves | `Model/Workspace.swift` (and the file's shape), `Model/BubbleStore.swift` |
 | What counts as a swipe | `Support/WorkspaceSwipe.swift` decides; `Window/PanelController.swift` feeds it |

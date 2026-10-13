@@ -106,6 +106,7 @@ final class MenuBarItem {
         menu.addItem(pill)
 
         menu.addItem(loginItem)
+        menu.addItem(shortcutItem)
 
         let mute = NSMenuItem(title: "Mute pop sounds", action: #selector(toggleMute), keyEquivalent: "")
         mute.state = PopSounds.shared.isMuted ? .on : .off
@@ -163,6 +164,23 @@ final class MenuBarItem {
     @objc private func open() { actions?.toggleFromMenuBar() }
     @objc private func togglePill() { actions?.toggleFloatingPill() }
     @objc private func toggleLoginItem() { LoginItem.toggle() }
+    @objc private func recordShortcut() { actions?.recordShortcut() }
+
+    /// Names the shortcut, and says so when another app has taken it — which used
+    /// to leave it silently doing nothing.
+    private var shortcutItem: NSMenuItem {
+        let title: String
+        if let shortcut = actions?.shortcut {
+            title = shortcut.isRegistered
+                ? "Keyboard shortcut: \(shortcut.combo.display)…"
+                : "Keyboard shortcut: \(shortcut.combo.display) is taken — change…"
+        } else {
+            title = "Keyboard shortcut…"
+        }
+        let item = NSMenuItem(title: title, action: #selector(recordShortcut), keyEquivalent: "")
+        item.target = self
+        return item
+    }
 
     /// Ticked when on; a dash while macOS waits for you to approve it in System
     /// Settings, where choosing it again takes you.

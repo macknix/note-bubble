@@ -42,8 +42,11 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
     /// positional goes through it — see `PanelParking`.
     private let parking = PanelParking()
 
-    init(store: BubbleStore) {
+    let shortcut: GlobalShortcut
+
+    init(store: BubbleStore, shortcut: GlobalShortcut) {
         self.store = store
+        self.shortcut = shortcut
         // Defaults to on so nothing disappears for anyone who had no menu bar icon.
         UserDefaults.standard.register(defaults: [Self.pillDefaultsKey: true])
         self.showsFloatingPill = UserDefaults.standard.bool(forKey: Self.pillDefaultsKey)
@@ -211,6 +214,7 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
         RootView(
             store: store,
             panelState: panelState,
+            shortcut: shortcut,
             onClose: { [weak self] in self?.close() },
             onHoverChange: { [weak self] hovering in self?.setHovering(hovering) },
             onTogglePin: { [weak self] in self?.togglePin() },
@@ -430,6 +434,11 @@ final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarA
         } else {
             minimise()
         }
+    }
+
+    func recordShortcut() {
+        open()
+        withAnimation(Motion.overlay) { panelState.isRecordingShortcut = true }
     }
 
     /// Opening on purpose — a click, a hotkey, a menu — rather than by hover: focus

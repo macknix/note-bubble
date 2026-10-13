@@ -19,5 +19,6 @@ MainActor.assumeIsolated {
     PreviewDwellTests.run()
     LayoutPlanTests.run()
     DemoDataTests.run()
+    KeyComboTests.run()
     exit(Check.summary())
 }
