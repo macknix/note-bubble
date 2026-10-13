@@ -45,6 +45,9 @@ struct BubbleGrid: View {
     /// dot it is over. All of it lives in `TileFlight`, where it can be tested.
     @State var flight = TileFlight()
 
+    /// Watching the tile in hand for a shake, which resets its age.
+    @State var shake = ShakeDetector()
+
     /// Waiting out the dwell before resting on a dot slides that board into view.
     @State var previewTask: Task<Void, Never>?
     /// Which side the previewed board came in from, remembered so that calling the

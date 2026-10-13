@@ -20,5 +20,6 @@ MainActor.assumeIsolated {
     LayoutPlanTests.run()
     DemoDataTests.run()
     KeyComboTests.run()
+    ShakeDetectorTests.run()
     exit(Check.summary())
 }

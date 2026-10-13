@@ -337,6 +337,14 @@ While a tile is being dragged, `visualIndex(of:at:in:)` computes where every
 order. The model is untouched until the drag ends. The dragged tile's position
 animation is deliberately disabled so it tracks the cursor without lag.
 
+**Shaking a carried tile resets its age** (`Support/ShakeDetector`, fed from the same
+drag in `BubbleGrid.watchForShake`). Four reversals of at least
+`ShakeDetector.minimumSwing`, within `ShakeDetector.window`, on either axis — so a
+rearrange that wanders, or overshoots a slot and comes back, never counts. Not while
+the tile is over a workspace dot, where the same waggle is aiming. A shake ends the
+drag the same way filing does — `cancelDrag`, consuming the press, because the
+button is still down — so the tile settles home, green.
+
 ### Two things the grid must not do
 
 - The tile itself (`BubbleTile`) is render-only; it takes `pressProgress` and
