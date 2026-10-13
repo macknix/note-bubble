@@ -1,6 +1,7 @@
 import Foundation
 @testable import NoteBubbleCore
 
+@MainActor
 enum PanelShortcutTests {
     private static func key(_ characters: String, keyCode: UInt16 = 0, command: Bool = true, shift: Bool = false) -> PanelShortcut? {
         PanelShortcut.match(characters: characters, keyCode: keyCode, command: command, shift: shift)
