@@ -172,9 +172,10 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
                            PanelMover, SwipeMonitor,
                            MenuBarItem, HotKey
 Sources/NoteBubbleTests/   executable test suite + Harness
-Scripts/                   build-app.sh, package.sh, make-icon.swift, make-pop-sounds.py,
-                           demo-data.py
+Scripts/                   build-app.sh, package.sh, render-cask.sh, make-icon.swift,
+                           make-pop-sounds.py, demo-data.py
 Resources/                 Info.plist, AppIcon.icns, Sounds/
+Packaging/homebrew/        the Homebrew cask template, and how the tap is wired
 ```
 
 The executable/library split exists solely so the test target has something to
