@@ -20,6 +20,7 @@ final class PopSounds: ObservableObject {
 
     private var clips: [Data] = []
     private var active: [AVAudioPlayer] = []
+    private static let maximumOverlap = 8
     private var lastIndex = -1
 
     /// Off is remembered across launches. `@Published` so the toolbar's speaker
@@ -64,11 +65,16 @@ final class PopSounds: ObservableObject {
         guard let player = try? AVAudioPlayer(data: clips[index]) else { return }
         player.volume = 0.6
         player.prepareToPlay()
-        player.play()
 
         // Hold a reference until it finishes, or ARC kills the sound mid-play.
+        // Finished players are dropped first. This used to test `currentTime > 0`
+        // as well, but a player that finishes rewinds to 0, so none was ever
+        // dropped, and the cap below then cut off the oldest whether or not it was
+        // still playing.
+        active.removeAll { !$0.isPlaying }
+        player.play()
         active.append(player)
-        active.removeAll { !$0.isPlaying && $0.currentTime > 0 }
-        if active.count > 8 { active.removeFirst(active.count - 8) }
+        // Only a burst of more than this many pops at once can reach it.
+        if active.count > Self.maximumOverlap { active.removeFirst(active.count - Self.maximumOverlap) }
     }
 }
