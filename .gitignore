@@ -14,3 +14,6 @@ build/
 # An unrelated clone of the agent-skills repo that lands here when a skill is
 # installed from this directory. Not part of Note Bubble.
 skills/
+
+# Release artefacts — rebuilt by Scripts/package.sh
+dist/

@@ -18,6 +18,7 @@ swift run NoteBubbleTests        # run the test suite
 ./Scripts/build-app.sh           # release build (universal arm64 + x86_64) + assemble build/Note Bubble.app
 ./Scripts/build-app.sh debug     # same, debug configuration
 VERSION=v1.2.0 ./Scripts/build-app.sh  # stamp an explicit version (CI does this from the tag)
+./Scripts/package.sh             # release build → dist/: .dmg, .zip, SHA256SUMS.txt
 open "build/Note Bubble.app"     # launch
 pkill -f "Note Bubble.app"       # quit (there is no Dock icon to right-click)
 
@@ -170,7 +171,7 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
                            PanelMover, SwipeMonitor,
                            MenuBarItem, HotKey
 Sources/NoteBubbleTests/   executable test suite + Harness
-Scripts/                   build-app.sh, make-icon.swift, make-pop-sounds.py,
+Scripts/                   build-app.sh, package.sh, make-icon.swift, make-pop-sounds.py,
                            demo-data.py
 Resources/                 Info.plist, AppIcon.icns, Sounds/
 ```
