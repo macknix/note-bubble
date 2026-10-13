@@ -12,22 +12,27 @@ struct PopBurst: View, Identifiable {
     @State private var progress: CGFloat = 0
 
     private static let shardCount = 10
+    /// Under Reduce Motion the outline fades where it is and nothing flies.
+    private let reduced = Motion.reduceMotion
+    private var growth: CGFloat { reduced ? 0 : 0.6 }
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .strokeBorder(color.opacity(0.9 * (1 - progress)), lineWidth: 2.5 * (1 - progress) + 0.5)
-                .frame(width: size.width * (1 + progress * 0.6),
-                       height: size.height * (1 + progress * 0.6))
+                .frame(width: size.width * (1 + progress * growth),
+                       height: size.height * (1 + progress * growth))
 
-            ForEach(0..<Self.shardCount, id: \.self) { index in
-                let angle = (Double(index) / Double(Self.shardCount)) * 2 * .pi
-                let distance = max(size.width, size.height) * (0.4 + progress * 0.6)
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .fill(color.opacity(0.95 * (1 - progress)))
-                    .frame(width: 6 * (1 - progress * 0.6), height: 6 * (1 - progress * 0.6))
-                    .rotationEffect(.radians(angle + Double(progress) * 1.2))
-                    .offset(x: cos(angle) * distance, y: sin(angle) * distance)
+            if !reduced {
+                ForEach(0..<Self.shardCount, id: \.self) { index in
+                    let angle = (Double(index) / Double(Self.shardCount)) * 2 * .pi
+                    let distance = max(size.width, size.height) * (0.4 + progress * 0.6)
+                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                        .fill(color.opacity(0.95 * (1 - progress)))
+                        .frame(width: 6 * (1 - progress * 0.6), height: 6 * (1 - progress * 0.6))
+                        .rotationEffect(.radians(angle + Double(progress) * 1.2))
+                        .offset(x: cos(angle) * distance, y: sin(angle) * distance)
+                }
             }
         }
         .position(centre)

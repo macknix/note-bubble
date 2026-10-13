@@ -32,6 +32,6 @@ struct FileNoticeBanner: View {
         .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
         .padding(.horizontal, 12)
         .padding(.top, 6)
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .transition(Motion.move(.top).combined(with: .opacity))
     }
 }

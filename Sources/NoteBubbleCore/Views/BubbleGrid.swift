@@ -220,6 +220,11 @@ struct BubbleGrid: View {
         // track the cursor with no lag.
         .animation(isDragging ? nil : Motion.reflow, value: position)
         .contextMenu { contextMenu(node, index: index, plan: plan, layout: layout) }
+        // VoiceOver cannot hold, drag or aim at a dot, so everything those do is
+        // offered as an action instead — the same actions as the context menu, and
+        // the same paths, so a parent still asks before it pops.
+        .accessibilityActions { contextMenu(node, index: index, plan: plan, layout: layout) }
+        .accessibilityAction { store.drillInto(node.id) }
         // While editing, the gesture is masked off so the text field owns the mouse.
         .gesture(
             gesture(for: node, index: index, plan: plan, layout: layout),
@@ -237,8 +242,22 @@ struct BubbleGrid: View {
         Button("Open") { store.drillInto(node.id) }
         Button("Rename") { store.editingID = node.id }
         Button("Reset age to today") { store.touch(node.id) }
+        if store.hasMultipleWorkspaces {
+            Menu("Move to") {
+                ForEach(store.workspaces.filter { $0.id != store.currentWorkspaceID }) { workspace in
+                    Button(workspace.displayName) { move(node, to: workspace) }
+                }
+            }
+        }
         Divider()
         Button("Pop", role: .destructive) { performPop(node, at: index, plan: plan, layout: layout) }
+    }
+
+    /// Files a note onto another board without dragging it there — from the context
+    /// menu, or VoiceOver. You stay where you are; the toast offers it back.
+    func move(_ node: BubbleNode, to workspace: Workspace) {
+        guard withAnimation(Motion.reflow, { store.move(node.id, toWorkspace: workspace.id) }) else { return }
+        showToast("Moved “\(node.displayName)” to \(workspace.displayName)")
     }
 
 }

@@ -17,6 +17,15 @@ enum Aging {
         case fresh   // 0–2 days
         case aging   // 3–6 days
         case overdue // 7 days and beyond
+
+        /// The stage in words, for anything that cannot rely on colour.
+        var name: String {
+            switch self {
+            case .fresh: "fresh"
+            case .aging: "ageing"
+            case .overdue: "overdue"
+            }
+        }
     }
 
     static func stage(forDays days: Double) -> Stage {
@@ -33,6 +42,20 @@ enum Aging {
     static func progress(forDays days: Double) -> Double {
         let t = min(max(days / redAfterDays, 0), 1)
         return pow(t, 0.85) // spend slightly longer looking urgent than fresh
+    }
+
+    /// The age read aloud — what VoiceOver says where a tile shows "3d".
+    static func spokenAge(from date: Date, now: Date) -> String {
+        let days = Int(now.timeIntervalSince(date) / 86_400)
+        func plural(_ n: Int, _ unit: String) -> String { "\(n) \(unit)\(n == 1 ? "" : "s") old" }
+        switch days {
+        case ..<1: return "written today"
+        case 1: return "written yesterday"
+        case ..<7: return plural(days, "day")
+        case ..<30: return plural(days / 7, "week")
+        case ..<365: return plural(days / 30, "month")
+        default: return plural(days / 365, "year")
+        }
     }
 
     static func relativeAge(from date: Date, now: Date) -> String {

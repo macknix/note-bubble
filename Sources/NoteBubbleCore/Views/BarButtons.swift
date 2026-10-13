@@ -39,6 +39,8 @@ struct GlassIconButton: View {
         .onHover { hovering = $0 && isEnabled }
         .animation(Motion.hover, value: hovering)
         .help(help)
+        // The glyph alone names nothing VoiceOver can say; the tooltip does.
+        .accessibilityLabel(help)
     }
 }
 
@@ -101,5 +103,6 @@ struct CandyOrb: View {
         .onHover { hovering = $0 }
         .animation(Motion.hover, value: hovering)
         .help(help)
+        .accessibilityLabel(help)
     }
 }

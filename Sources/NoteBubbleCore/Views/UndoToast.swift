@@ -23,6 +23,6 @@ struct UndoToast: View {
         .overlay(Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 1))
         .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
         .padding(.bottom, 12)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .transition(Motion.move(.bottom).combined(with: .opacity))
     }
 }
