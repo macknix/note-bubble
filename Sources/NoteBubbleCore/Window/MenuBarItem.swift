@@ -10,27 +10,12 @@ import Combine
 final class MenuBarItem {
     private let item: NSStatusItem
     private let store: BubbleStore
-    private let onToggle: () -> Void
-    private let onTogglePill: () -> Void
-    private let showsPill: () -> Bool
-    private let onSelectWorkspace: (Int) -> Void
-    private let onNewWorkspace: () -> Void
+    private weak var actions: MenuBarActions?
     private var observer: AnyCancellable?
 
-    init(
-        store: BubbleStore,
-        onToggle: @escaping () -> Void,
-        showsPill: @escaping () -> Bool,
-        onTogglePill: @escaping () -> Void,
-        onSelectWorkspace: @escaping (Int) -> Void,
-        onNewWorkspace: @escaping () -> Void
-    ) {
+    init(store: BubbleStore, actions: MenuBarActions) {
         self.store = store
-        self.onToggle = onToggle
-        self.showsPill = showsPill
-        self.onTogglePill = onTogglePill
-        self.onSelectWorkspace = onSelectWorkspace
-        self.onNewWorkspace = onNewWorkspace
+        self.actions = actions
         self.item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = item.button {
@@ -91,7 +76,7 @@ final class MenuBarItem {
         if NSApp.currentEvent?.type == .rightMouseUp {
             showMenu()
         } else {
-            onToggle()
+            actions?.toggleFromMenuBar()
         }
     }
 
@@ -110,7 +95,7 @@ final class MenuBarItem {
             action: #selector(togglePill),
             keyEquivalent: ""
         )
-        pill.state = showsPill() ? .on : .off
+        pill.state = actions?.showsFloatingPill ?? true ? .on : .off
         pill.target = self
         menu.addItem(pill)
 
@@ -163,10 +148,10 @@ final class MenuBarItem {
         return overdue > 0 ? "\(workspace.displayName) — \(overdue) overdue" : workspace.displayName
     }
 
-    @objc private func selectWorkspace(_ sender: NSMenuItem) { onSelectWorkspace(sender.tag) }
-    @objc private func newWorkspace() { onNewWorkspace() }
-    @objc private func open() { onToggle() }
-    @objc private func togglePill() { onTogglePill() }
+    @objc private func selectWorkspace(_ sender: NSMenuItem) { actions?.showWorkspace(at: sender.tag) }
+    @objc private func newWorkspace() { actions?.newWorkspace() }
+    @objc private func open() { actions?.toggleFromMenuBar() }
+    @objc private func togglePill() { actions?.toggleFloatingPill() }
     @objc private func toggleMute() { PopSounds.shared.isMuted.toggle() }
     @objc private func quit() { NSApp.terminate(nil) }
 }

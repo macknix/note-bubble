@@ -30,6 +30,9 @@ final class OverlayPanel: NSPanel {
 
     /// Required so the text fields inside bubbles can take keystrokes. Paired with
     /// `.nonactivatingPanel`, this gives keyboard focus without activating the app.
+    /// Who carries out the shortcuts below.
+    weak var commands: PanelCommands?
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
@@ -49,16 +52,15 @@ final class OverlayPanel: NSPanel {
             super.keyDown(with: event)
             return
         }
-        let controller = delegate as? PanelController
         switch shortcut {
-        case .minimise: controller?.minimise()
+        case .minimise: commands?.minimise()
         case .quit: NSApp.terminate(nil)
-        case .newBubble: controller?.newBubble()
-        case .newWorkspace: controller?.newWorkspace()
-        case .undo: controller?.undo()
-        case .previousWorkspace: controller?.previousWorkspace()
-        case .nextWorkspace: controller?.nextWorkspace()
-        case .escape: controller?.escape()
+        case .newBubble: commands?.newBubble()
+        case .newWorkspace: commands?.newWorkspace()
+        case .undo: commands?.undo()
+        case .previousWorkspace: commands?.previousWorkspace()
+        case .nextWorkspace: commands?.nextWorkspace()
+        case .escape: commands?.escape()
         }
     }
 }

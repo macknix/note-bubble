@@ -51,7 +51,7 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | Panel size, fade, hover open/close timing | `Window/PanelController.swift` |
 | Where the panel sits: snapping, which way it opens | `Window/PanelParking.swift`, rules in `Window/PanelPlacement.swift` |
 | The pill's size | `Views/MinimisedPill.swift` |
-| Keyboard shortcuts | `Window/OverlayPanel.swift` (⌘…) and `Window/HotKey.swift` (⌥Space) |
+| Keyboard shortcuts | `Window/OverlayPanel.swift` (`PanelShortcut` maps keys, `PanelCommands` carries them out) and `Window/HotKey.swift` (⌥Space) |
 | Text-editing shortcuts (⌘C/⌘V/⌘A), and where ⌘Z goes | `App/MainMenu.swift` |
 | Workspaces: the boards themselves | `Model/Workspace.swift` (and the file's shape), `Model/BubbleStore.swift` |
 | What counts as a swipe | `Support/WorkspaceSwipe.swift` decides; `Window/PanelController.swift` feeds it |
@@ -147,8 +147,8 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
                            AgingPalette,
                            MinimisedPill, WindowDragArea
   Window/                  OverlayPanel, PanelController, PanelParking,
-                           PanelPlacement, PanelState, PanelDrag, MenuBarItem,
-                           HotKey
+                           PanelPlacement, PanelState, PanelDrag, PanelCommands,
+                           MenuBarItem, HotKey
 Sources/NoteBubbleTests/   executable test suite + Harness
 Scripts/                   build-app.sh, make-icon.swift, make-pop-sounds.py,
                            demo-data.py

@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Owns the overlay panel and the expanded ⇄ minimised transition.
 @MainActor
-final class PanelController: NSObject, NSWindowDelegate {
+final class PanelController: NSObject, NSWindowDelegate, PanelCommands, MenuBarActions {
     private let store: BubbleStore
     private let panelState = PanelState()
     private let panel: OverlayPanel
@@ -40,7 +40,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     /// icon there are two ways in, so this can be turned off for a tidier screen —
     /// the panel then hides completely instead of leaving the pill behind.
     private static let pillDefaultsKey = "ShowsFloatingPill"
-    private var showsFloatingPill: Bool {
+    private(set) var showsFloatingPill: Bool {
         didSet { UserDefaults.standard.set(showsFloatingPill, forKey: Self.pillDefaultsKey) }
     }
 
@@ -72,14 +72,8 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.alphaValue = Self.idleAlpha
         if showsFloatingPill { panel.orderFrontRegardless() }
 
-        menuBar = MenuBarItem(
-            store: store,
-            onToggle: { [weak self] in self?.toggleFromMenuBar() },
-            showsPill: { [weak self] in self?.showsFloatingPill ?? true },
-            onTogglePill: { [weak self] in self?.toggleFloatingPill() },
-            onSelectWorkspace: { [weak self] index in self?.showWorkspace(at: index) },
-            onNewWorkspace: { [weak self] in self?.newWorkspace() }
-        )
+        panel.commands = self
+        menuBar = MenuBarItem(store: store, actions: self)
 
         // The panel is only as tall as its contents need, so adding or popping a
         // bubble resizes it. `objectWillChange` fires *before* the mutation lands,
@@ -178,7 +172,7 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     /// Picking a board from the menu bar opens it, rather than switching one you
     /// cannot see.
-    private func showWorkspace(at index: Int) {
+    func showWorkspace(at index: Int) {
         withAnimation(Motion.reflow) { store.selectWorkspace(at: index) }
         expand(takeFocus: true)
         fade(to: 1.0, quickly: true)
@@ -340,6 +334,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         MinimisedPill(
             store: store,
             onExpand: { [weak self] in self?.expand() },
+            onWindowDragEnded: { [weak self] start in self?.windowDragEnded(from: start) },
             onHoverChange: { [weak self] hovering in self?.setHovering(hovering) }
         )
     }
@@ -488,7 +483,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     ///
     /// The icon is only a fallback, for when that spot is gone: a display unplugged
     /// since, which would otherwise strand the panel somewhere unreachable.
-    private func toggleFromMenuBar() {
+    func toggleFromMenuBar() {
         if isMinimised {
             if !parking.isOnScreen(panel.frame), let icon = menuBar?.screenFrame {
                 moveBelow(icon)
@@ -500,7 +495,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
     }
 
-    private func toggleFloatingPill() {
+    func toggleFloatingPill() {
         showsFloatingPill.toggle()
         guard isMinimised else { return }
         if showsFloatingPill {
