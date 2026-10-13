@@ -301,8 +301,12 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     /// ⌘Z. Lives here because the panel routes key events to the controller.
+    ///
+    /// Never while typing: ⌘Z in a note means "undo my typing", and should be
+    /// handled by the field through `MainMenu`. If it ever arrives here instead, it
+    /// must not reach back past the sentence being written to undo a pop.
     func undo() {
-        guard !isMinimised else { return }
+        guard !isMinimised, !store.isEditing else { return }
         store.undo()
     }
 
