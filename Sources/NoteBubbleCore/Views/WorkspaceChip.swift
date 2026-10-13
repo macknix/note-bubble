@@ -14,6 +14,9 @@ struct WorkspaceChip: View {
     let onRequestDelete: (Workspace) -> Void
 
     @State private var draft = ""
+    /// Set by Escape, so the focus loss that follows as the field goes away does not
+    /// commit the very name Escape was meant to throw away.
+    @State private var isCancelling = false
     @FocusState private var focused: Bool
 
     /// The board **on screen**, which during a drag may be one being previewed
@@ -120,10 +123,12 @@ struct WorkspaceChip: View {
             }
             .onAppear {
                 draft = workspace.name
+                isCancelling = false
                 focused = true
             }
             .onSubmit(commit)
             .onKeyPress(keys: [.escape]) { _ in
+                isCancelling = true
                 store.renamingWorkspaceID = nil
                 return .handled
             }
@@ -134,6 +139,7 @@ struct WorkspaceChip: View {
     }
 
     private func commit() {
+        guard !isCancelling else { return }
         let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         // An emptied name leaves the old one alone — and if the board was never
         // named or written in, dropping the rename discards it outright.
