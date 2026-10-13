@@ -47,8 +47,11 @@ enum Aging {
         case ..<1: return "today"
         case 1: return "yesterday"
         case ..<7: return "\(days)d"
-        case ..<28: return "\(days / 7)w"
-        default: return "\(days / 30)mo"
+        // Weeks run to 30 days so the month count never starts at zero: 28 and 29
+        // days used to read "0mo".
+        case ..<30: return "\(days / 7)w"
+        case ..<365: return "\(days / 30)mo"
+        default: return "\(days / 365)y"
         }
     }
 }

@@ -28,6 +28,16 @@ enum AgingTests {
             Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-14 * 86_400), now: now), "2w", "two weeks reads as 2w")
             Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-60 * 86_400), now: now), "2mo", "two months reads as 2mo")
 
+            let table: [(Double, String)] = [
+                (0, "today"), (0.9, "today"), (1, "yesterday"), (2, "2d"), (6, "6d"),
+                (7, "1w"), (13, "1w"), (27, "3w"), (28, "4w"), (29, "4w"),
+                (30, "1mo"), (59, "1mo"), (60, "2mo"), (364, "12mo"), (365, "1y"), (800, "2y")
+            ]
+            for (days, expected) in table {
+                Check.equal(Aging.relativeAge(from: now.addingTimeInterval(-days * 86_400), now: now),
+                            expected, "\(days) days reads as \(expected)")
+            }
+
             let node = BubbleNode(text: "x", createdAt: now.addingTimeInterval(-5 * 86_400))
             Check.close(node.ageInDays(at: now), 5, "ageInDays matches the creation date", tolerance: 0.000_1)
             Check.close(node.ageInDays(at: now.addingTimeInterval(2 * 86_400)), 7,
