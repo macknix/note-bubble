@@ -74,7 +74,7 @@ plain JSON file in your own Application Support folder.
 | **Pop a bubble** (done) | Press and hold — it swells, then bursts |
 | **Undo a pop** | **⌘Z**, the toast that appears, or ↩ in the bar |
 | **Rearrange** | Drag a tile; the others shuffle around it |
-| **Reset a bubble's age** | Pick it up and **shake it** — it turns green and drops back into place |
+| **Reset a bubble's age** | Pick it up and **shake it** — it turns green in your hand; let go wherever you like |
 | **Switch workspace** | **Two-finger swipe** across the panel, ⌘← / ⌘→, or click a dot |
 | **Move a bubble to another workspace** | Drag it onto that workspace's dot, and let go |
 | New workspace | ⌘⇧N, or *New workspace* in the workspace menu |
