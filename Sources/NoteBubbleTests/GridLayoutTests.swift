@@ -113,6 +113,11 @@ enum TileSizingTests {
 
     static func run() {
         Check.suite("Tile sizing") {
+            let lines = TileText.editorLineLimit
+            Check.isTrue(lines > 5, "the editor shows more than five lines before scrolling")
+            Check.isTrue(CGFloat(lines) * TileText.fontSize <= GridLayout.maximumHeight,
+                         "but no more than the tallest tile can hold")
+
             let empty = layout.spec(for: node(""))
             let short = layout.spec(for: node("Dentist"))
             let medium = layout.spec(for: node(text(1)))

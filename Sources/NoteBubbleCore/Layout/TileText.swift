@@ -16,6 +16,13 @@ enum TileText {
     /// row carrying the age and the sub-bubble count, and the gap above it.
     static let verticalChrome: CGFloat = 34
 
+    /// How many lines the note editor shows before it scrolls: as many as fit in
+    /// the tallest tile, so editing a long note uses the room the tile has.
+    static let editorLineLimit: Int = {
+        let lineHeight = NSLayoutManager().defaultLineHeight(for: font)
+        return max(1, Int((GridLayout.maximumHeight - verticalChrome) / lineHeight))
+    }()
+
     /// Rendered height of `text` wrapped to `width`.
     static func height(of text: String, boundedBy width: CGFloat) -> CGFloat {
         guard !text.isEmpty, width > 1 else { return 0 }
