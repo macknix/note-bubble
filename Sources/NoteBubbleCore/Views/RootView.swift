@@ -49,7 +49,7 @@ struct RootView: View {
         .overlay { deletionConfirmation }
         // An open confirmation must survive the pointer leaving the panel.
         .onChange(of: pendingDeletion != nil) { _, isOpen in
-            panelState.blocksAutoCollapse = isOpen
+            panelState.setHold(.workspaceDeletion, isOpen)
         }
         .onHover { hovering in
             isHovering = hovering

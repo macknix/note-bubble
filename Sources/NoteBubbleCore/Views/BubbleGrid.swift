@@ -133,7 +133,7 @@ struct BubbleGrid: View {
             .onPreferenceChange(GridOffsetsKey.self) { offsets = $0 }
             // An open confirmation must survive the pointer leaving the panel.
             .onChange(of: pendingPop != nil) { _, isOpen in
-                panelState.blocksAutoCollapse = isOpen
+                panelState.setHold(.popConfirmation, isOpen)
             }
             // Nothing should change the board *for real* under a drag — previewing
             // deliberately does not — so if something does, the drag is over. Filing
@@ -408,7 +408,7 @@ struct BubbleGrid: View {
             case .beginDrag:
                 // A drag can wander past the panel edge; don't let that fold the
                 // panel away mid-rearrange.
-                panelState.blocksAutoCollapse = true
+                panelState.setHold(.tileDrag, true)
                 // The dots up in the bar grow into drop targets for as long as the
                 // tile is in hand.
                 withAnimation(Motion.lift) { panelState.isDraggingTile = true }
@@ -556,7 +556,7 @@ struct BubbleGrid: View {
             panelState.isDraggingTile = false
             panelState.hoveredWorkspace = nil
         }
-        panelState.blocksAutoCollapse = pendingPop != nil
+        panelState.setHold(.tileDrag, false)
     }
 
     /// Clears the press and the machine with it. Safe to call whether or not one is

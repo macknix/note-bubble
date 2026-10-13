@@ -790,6 +790,14 @@ pinned, `store.editingID != nil`, or `PanelState.blocksAutoCollapse` all veto it
 `PanelState` exists because the grid knows things the window needs (a confirmation
 sheet is open, a tile is mid-drag) that have no business living on the note model.
 
+`blocksAutoCollapse` is derived from **`PanelState.holds`, a set of named reasons**
+(`.tileDrag`, `.panelDrag`, `.popConfirmation`, `.workspaceDeletion`), and each owner
+sets and clears only its own with `setHold`. It used to be one `Bool` with four
+writers, each assuming it was the only one — letting go of a panel drag with a pop
+confirmation open cleared it, and the panel then folded the question away. When the
+view is swapped, `forgetView()` drops the holds the view owned, so a confirmation no
+one can see any more cannot hold the panel open for good.
+
 **`RootView` reports hover as `isHovering || editing`,** tracking real pointer
 presence separately from editing state. Reporting a bare `false` when editing ended
 told the panel the pointer had left, which scheduled a collapse — so pressing
