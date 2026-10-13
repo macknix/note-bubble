@@ -270,16 +270,8 @@ final class BubbleStore: ObservableObject {
 
     /// How the whole tree is distributed across the traffic lights. Drives the
     /// status handle in the top bar, which is the only place all three are shown.
-    var stageCounts: (fresh: Int, aging: Int, overdue: Int) {
-        var counts = (fresh: 0, aging: 0, overdue: 0)
-        for note in root.flattened {
-            switch Aging.stage(forDays: note.ageInDays(at: now)) {
-            case .fresh: counts.fresh += 1
-            case .aging: counts.aging += 1
-            case .overdue: counts.overdue += 1
-            }
-        }
-        return counts
+    var stageCounts: StageTally {
+        StageTally(of: root, at: now)
     }
 
     /// Every unpopped bubble in the app, and how many of them have gone red.
@@ -289,17 +281,15 @@ final class BubbleStore: ObservableObject {
     /// you, because that is the one you can act on. **Outside it** — the resting
     /// pill and the menu bar icon — there is no board in front of you, so a count
     /// that only described one would be quietly ignoring the rest of your notes.
-    var everywhere: (notes: Int, overdue: Int) {
-        workspaces.reduce(into: (notes: 0, overdue: 0)) { totals, workspace in
-            totals.notes += workspace.notes.flattened.count
-            totals.overdue += workspace.overdueCount(at: now)
-        }
+    var everywhere: StageTally {
+        workspaces.reduce(StageTally()) { $0 + $1.tally(at: now) }
     }
 
     // MARK: - Workspaces
 
-    /// The board on screen. Safe to force because `workspaces` is never empty and
-    /// `currentIndex` is clamped by every method that can move it.
+    /// The board on screen. `workspaces` is never empty and every method that moves
+    /// `currentIndex` keeps it in range, so the fallback is never reached — it is
+    /// there so a broken invariant shows an empty board rather than crashing.
     var currentWorkspace: Workspace {
         workspaces.indices.contains(currentIndex) ? workspaces[currentIndex] : Workspace()
     }
@@ -429,17 +419,10 @@ final class BubbleStore: ObservableObject {
         if renamingWorkspaceID == id { renamingWorkspaceID = nil }
         guard let index = workspaces.firstIndex(where: { $0.id == id }) else { return }
 
+        // Focus first, while the board it is on is still there to clean up against.
+        if index == currentIndex { editingID = nil }
         recordUndo(.removeWorkspace(workspaces[index], index: index), label: workspaces[index].displayName)
-        workspaces.remove(at: index)
-
-        if index < currentIndex {
-            currentIndex -= 1
-        } else if index == currentIndex {
-            editingID = nil
-            currentIndex = min(index, workspaces.count - 1)
-            path = []
-        }
-        scheduleSave()
+        deleteWorkspace(at: index)
     }
 
     /// Drops a board that was made and then abandoned — no name, no notes — when
@@ -452,6 +435,12 @@ final class BubbleStore: ObservableObject {
         // Deliberately not via `removeWorkspace`: there is nothing to undo about a
         // board that was never named or written in, and recording it would bury a
         // real deletion in the stack.
+        deleteWorkspace(at: index)
+    }
+
+    /// Takes a board off the shelf and keeps `currentIndex` on the board you were
+    /// looking at — or, if that was the one that went, on its neighbour, at the top.
+    private func deleteWorkspace(at index: Int) {
         workspaces.remove(at: index)
         if index < currentIndex {
             currentIndex -= 1
@@ -490,6 +479,11 @@ final class BubbleStore: ObservableObject {
     }
 
     // MARK: - Editing
+
+    // `updateText`, `touch` and `discardIfEmpty` act on the level on screen only —
+    // they are only ever called for a tile the grid is showing. `pop` and the
+    // filing `move` search the whole tree instead, because a confirmation can be
+    // answered after the view has moved on.
 
     /// Adds an empty bubble at the current level and puts it straight into edit mode.
     @discardableResult

@@ -356,7 +356,7 @@ enum BubbleStoreTests {
             Check.isTrue(published > 0, "the clock moving is a change the views and menu bar hear about")
             Check.equal(store.stageCounts.overdue, 1, "and a day later the note is overdue, untouched")
             Check.equal(store.everywhere.overdue, 1, "on the pill and the menu bar too")
-            Check.equal(store.currentWorkspace.worstStage(at: store.now), .overdue, "and on its board's dot")
+            Check.equal(store.currentWorkspace.tally(at: store.now).worst, .overdue, "and on its board's dot")
 
             published = 0
             store.advanceClock(to: store.now.addingTimeInterval(-3_600))

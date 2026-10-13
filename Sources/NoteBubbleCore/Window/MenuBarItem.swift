@@ -150,7 +150,7 @@ final class MenuBarItem {
     /// The icon's badge is one total across every board; this is where it is
     /// broken back down, so you can see which board is rotting.
     private func title(for workspace: Workspace) -> String {
-        let overdue = workspace.overdueCount(at: store.now)
+        let overdue = workspace.tally(at: store.now).overdue
         return overdue > 0 ? "\(workspace.displayName) — \(overdue) overdue" : workspace.displayName
     }
 

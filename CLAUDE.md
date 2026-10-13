@@ -136,7 +136,8 @@ Sources/NoteBubble/        main.swift only — calls NoteBubbleApp.launch()
 Sources/NoteBubbleCore/    everything real, so the tests can import it
   App/                     NoteBubbleApp (public entry point), AppDelegate, MainMenu
   Audio/                   PopSounds
-  Model/                   BubbleNode, BubbleStore, BubbleFile, Workspace, Aging
+  Model/                   BubbleNode, BubbleStore, BubbleFile, Workspace, Aging,
+                           StageTally
   Layout/                  GridLayout, LayoutPlan, TileText, TileSizeCache
   Support/                 Motion, TileGesture, TileFlight, WorkspaceSwipe, AgeClock
   Views/                   RootView, GlassBar, BarStyle, BarButtons, StatusHandle,
@@ -238,7 +239,7 @@ Two consequences worth knowing:
   because that is the one you can act on, and what the *other* boards are up to is
   said by the colour of their **dots**. Outside the panel — the resting pill and the
   menu bar icon — there is no board in front of you, so both count **everything**
-  (`BubbleStore.everywhere`): a widget at rest that stayed quiet about a note rotting
+  (`BubbleStore.everywhere`, a `StageTally` summed over every board): a widget at rest that stayed quiet about a note rotting
   on the board you last opened a fortnight ago would be failing at its one job. The
   menu bar's Workspaces submenu breaks that total back down, board by board.
 - **Undo records name their board by id,** because an undo can be asked for from

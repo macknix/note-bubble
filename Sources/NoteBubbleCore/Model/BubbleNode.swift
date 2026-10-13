@@ -107,7 +107,16 @@ extension Array where Element == BubbleNode {
         return resolved
     }
 
-    /// Every note in the tree, flattened — used for the overdue count on the pill.
+    /// Visits every note in the tree, depth first, without building an array of
+    /// them — what counting uses, since it runs on every render.
+    func forEachNode(_ body: (BubbleNode) -> Void) {
+        for node in self {
+            body(node)
+            node.children.forEachNode(body)
+        }
+    }
+
+    /// Every note in the tree, flattened.
     var flattened: [BubbleNode] {
         flatMap { [$0] + $0.children.flattened }
     }

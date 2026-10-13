@@ -22,9 +22,9 @@ struct MinimisedPill: View {
     /// there is no board in front of you: this is the app's one at-a-glance number,
     /// and a note rotting on a board you last opened a fortnight ago is exactly the
     /// thing it should be telling you about.
-    private var counts: (notes: Int, overdue: Int) { store.everywhere }
+    private var counts: StageTally { store.everywhere }
     private var overdue: Int { counts.overdue }
-    private var total: Int { counts.notes }
+    private var total: Int { counts.total }
 
     /// Everything the pill no longer says out loud. The badge is a number and a
     /// colour; this is where it is spelled out in words, including the scope — which

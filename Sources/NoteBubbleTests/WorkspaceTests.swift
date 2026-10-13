@@ -339,7 +339,7 @@ enum WorkspaceTests {
             // Outside it — the resting pill, the menu bar icon — there is no board in
             // front of you, so the count has to cover the lot. A note rotting on a
             // board you haven't opened in a fortnight is exactly what it is for.
-            Check.equal(store.everywhere.notes, 4, "every bubble in the app, at any depth")
+            Check.equal(store.everywhere.total, 4, "every bubble in the app, at any depth")
             Check.equal(store.everywhere.overdue, 3, "and every overdue one, on any board")
 
             store.selectWorkspace(at: 0)

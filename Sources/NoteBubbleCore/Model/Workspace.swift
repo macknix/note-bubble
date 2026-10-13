@@ -34,24 +34,11 @@ struct Workspace: Identifiable, Codable, Hashable {
         notes.isEmpty && name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    func overdueCount(at now: Date) -> Int {
-        notes.flattened.filter { Aging.stage(forDays: $0.ageInDays(at: now)) == .overdue }.count
-    }
-
-    /// The worst state anything in this workspace has reached, or nil when it is
-    /// empty. This is what colours its dot in the bar: a board gone red while you
-    /// are looking at another one is exactly what the traffic lights exist to say.
-    func worstStage(at now: Date) -> Aging.Stage? {
-        var worst: Aging.Stage?
-        for note in notes.flattened {
-            let stage = Aging.stage(forDays: note.ageInDays(at: now))
-            switch stage {
-            case .overdue: return .overdue
-            case .aging: worst = .aging
-            case .fresh: if worst == nil { worst = .fresh }
-            }
-        }
-        return worst
+    /// How this board's notes, at any depth, are spread across the stages. Its dot
+    /// is coloured by `worst`: a board gone red while you are looking at another one
+    /// is exactly what the traffic lights exist to say.
+    func tally(at now: Date) -> StageTally {
+        StageTally(of: notes, at: now)
     }
 }
 
