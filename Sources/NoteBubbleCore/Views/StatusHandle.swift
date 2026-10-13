@@ -14,7 +14,6 @@ struct StatusHandle: View {
     let drag: PanelDrag
 
     @State private var isDragging = false
-    @State private var pulse = false
 
     var body: some View {
         HStack(spacing: 6) {
@@ -46,7 +45,6 @@ struct StatusHandle: View {
         .animation(Motion.lift, value: isDragging)
         .panelDraggable(drag, isDragging: $isDragging)
         .help(summary)
-        .onAppear { pulse = true }
     }
 
     private var isEmpty: Bool {
@@ -64,23 +62,37 @@ struct StatusHandle: View {
     }
 
     private func badge(_ count: Int, days: Double, urgent: Bool) -> some View {
+        StageBadge(count: count, days: days, pulses: urgent)
+            .transition(.scale.combined(with: .opacity))
+    }
+}
+
+/// One count in the handle. Only overdue earns attention, and only when there is
+/// some — so the overdue badge pulses and the others sit still.
+///
+/// The pulse is the badge's own, started when *it* appears. It used to hang off a
+/// flag the whole handle flipped once on appear, so an overdue badge that turned
+/// up later — a note crossing into overdue with the panel open — never pulsed.
+private struct StageBadge: View {
+    let count: Int
+    let days: Double
+    let pulses: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
         ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [Aging.color(forDays: days), Aging.shadeColor(forDays: days)],
-                        center: UnitPoint(x: 0.35, y: 0.3),
-                        startRadius: 0,
-                        endRadius: 11
-                    )
-                )
-                .overlay(Circle().strokeBorder(.white.opacity(0.45), lineWidth: 0.5))
-                // Only overdue earns attention, and only when there is some.
-                .scaleEffect(urgent && pulse ? 1.1 : 1)
-                .animation(
-                    urgent ? .easeInOut(duration: 1.1).repeatForever(autoreverses: true) : .default,
-                    value: pulse
-                )
+            // Only an overdue badge runs an animator at all; the rest have nothing
+            // to animate and should cost nothing.
+            if pulses && !reduceMotion {
+                disc.phaseAnimator([false, true]) { disc, swollen in
+                    disc.scaleEffect(swollen ? 1.1 : 1)
+                } animation: { _ in
+                    .easeInOut(duration: 1.1)
+                }
+            } else {
+                disc
+            }
 
             Text("\(count)")
                 .font(.system(size: 9, weight: .heavy, design: .rounded))
@@ -88,6 +100,18 @@ struct StatusHandle: View {
                 .shadow(color: .black.opacity(0.35), radius: 1)
         }
         .frame(width: 17, height: 17)
-        .transition(.scale.combined(with: .opacity))
+    }
+
+    private var disc: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [Aging.color(forDays: days), Aging.shadeColor(forDays: days)],
+                    center: UnitPoint(x: 0.35, y: 0.3),
+                    startRadius: 0,
+                    endRadius: 11
+                )
+            )
+            .overlay(Circle().strokeBorder(.white.opacity(0.45), lineWidth: 0.5))
     }
 }
