@@ -17,6 +17,7 @@ swift build                      # compile check, all targets
 swift run NoteBubbleTests        # run the test suite
 ./Scripts/build-app.sh           # release build + assemble build/Note Bubble.app
 ./Scripts/build-app.sh debug     # same, debug configuration
+VERSION=v1.2.0 ./Scripts/build-app.sh  # stamp an explicit version (CI does this from the tag)
 open "build/Note Bubble.app"     # launch
 pkill -f "Note Bubble.app"       # quit (there is no Dock icon to right-click)
 
@@ -129,6 +130,12 @@ that will bite if forgotten:
 3. The test target uses `@testable`, which needs the debug-only `-enable-testing`,
    so `build-app.sh` passes `--product NoteBubble` to keep it out of release
    builds. Dropping that flag breaks `./Scripts/build-app.sh`.
+
+**The version lives in git, not in `Info.plist`.** `build-app.sh` stamps the copied
+plist: `CFBundleShortVersionString` from the latest `vX.Y.Z` tag (or `$VERSION`),
+`CFBundleVersion` from the commit count, and `NBGitCommit` from the short hash
+(`-dirty` if uncommitted). The plist in the repo holds placeholders. `AppVersion`
+reads them back for the menu bar's version line and the About panel.
 
 `Package.swift` pins `swiftLanguageMode(.v5)` deliberately. The toolchain is
 Swift 6.2, whose default strict-concurrency mode rejects most of the AppKit

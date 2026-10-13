@@ -23,5 +23,11 @@ enum PanelShortcutTests {
             Check.equal(key("", keyCode: 53, command: false), .escape, "Escape needs no modifier")
             Check.nil_(key("x"), "anything else falls through")
         }
+
+        Check.suite("App version") {
+            // The test runner is not an assembled bundle, so nothing was stamped.
+            Check.nil_(AppVersion.marketing, "outside a bundle there is no version")
+            Check.equal(AppVersion.summary, "Note Bubble — development build", "and the menu says so")
+        }
     }
 }

@@ -83,6 +83,12 @@ final class MenuBarItem {
     private func showMenu() {
         let menu = NSMenu()
 
+        // Which build this is, for bug reports — not clickable.
+        let version = NSMenuItem(title: AppVersion.summary, action: nil, keyEquivalent: "")
+        version.isEnabled = false
+        menu.addItem(version)
+        menu.addItem(.separator())
+
         menu.addItem(withTitle: "Open Note Bubble", action: #selector(open), keyEquivalent: "")
             .target = self
 
@@ -105,6 +111,8 @@ final class MenuBarItem {
         menu.addItem(mute)
 
         menu.addItem(.separator())
+        menu.addItem(withTitle: "About Note Bubble", action: #selector(about), keyEquivalent: "")
+            .target = self
         menu.addItem(withTitle: "Quit Note Bubble", action: #selector(quit), keyEquivalent: "q")
             .target = self
 
@@ -154,4 +162,11 @@ final class MenuBarItem {
     @objc private func togglePill() { actions?.toggleFloatingPill() }
     @objc private func toggleMute() { PopSounds.shared.isMuted.toggle() }
     @objc private func quit() { NSApp.terminate(nil) }
+
+    /// The standard panel, with the stamped version and copyright. Asking for it
+    /// is the one time activating the app is what the user wants.
+    @objc private func about() {
+        NSApp.activate()
+        NSApp.orderFrontStandardAboutPanel(nil)
+    }
 }
