@@ -12,6 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         store = BubbleStore()
         controller = PanelController(store: store)
+        // Never shown, but it is what routes ⌘C/⌘V/⌘Z to a focused text field.
+        MainMenu.install { [weak self] in self?.controller.undo() }
         hotKey = HotKey { [weak self] in self?.controller.toggleVisible() }
         ageClock = AgeClock { [weak self] in self?.store.advanceClock() }
     }

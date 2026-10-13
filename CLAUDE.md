@@ -51,6 +51,7 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | Where the panel sits: snapping, which way it opens | `Window/PanelParking.swift`, rules in `Window/PanelPlacement.swift` |
 | The pill's size | `Views/MinimisedPill.swift` |
 | Keyboard shortcuts | `Window/OverlayPanel.swift` (⌘…) and `Window/HotKey.swift` (⌥Space) |
+| Text-editing shortcuts (⌘C/⌘V/⌘A), and where ⌘Z goes | `App/MainMenu.swift` |
 | Workspaces: the boards themselves | `Model/Workspace.swift` (and the file's shape), `Model/BubbleStore.swift` |
 | What counts as a swipe | `Support/WorkspaceSwipe.swift` decides; `Window/PanelController.swift` feeds it |
 | Where a dragged tile is, and which dot it is over | `Support/TileFlight.swift` decides; `Views/BubbleGrid.swift` draws it |
@@ -132,7 +133,7 @@ plumbing here.
 ```
 Sources/NoteBubble/        main.swift only — calls NoteBubbleApp.launch()
 Sources/NoteBubbleCore/    everything real, so the tests can import it
-  App/                     NoteBubbleApp (public entry point), AppDelegate
+  App/                     NoteBubbleApp (public entry point), AppDelegate, MainMenu
   Audio/                   PopSounds
   Model/                   BubbleNode, BubbleStore, BubbleFile, Workspace, Aging
   Layout/                  GridLayout, LayoutPlan, TileText, TileSizeCache
@@ -521,6 +522,15 @@ standard shortcuts, so `keyDown` manually routes ⌘W/⌘M/⌘Q/⌘N, ⌘⇧N (n
 ⌘←/⌘→ (previous/next workspace) and Escape. It is the end of the responder chain,
 so a focused text field has already had its go — ⌘← inside a note still means
 "start of line" and never reaches here.
+
+**There is a main menu, and it is never seen.** An accessory app shows no menu bar,
+but AppKit delivers ⌘C/⌘V/⌘X/⌘A to a text field as *menu key equivalents* — with
+no main menu they went nowhere inside a note, and ⌘Z fell through to `keyDown` and
+undid a pop instead of the typing. `MainMenu` installs a standard Edit menu, and
+routes ⌘Z by hand: to the field editor's undo manager while typing, to the board
+otherwise. It is routed rather than left to the responder chain because whichever
+responder answered `undo:` first would win, and the window's own empty undo manager
+would have silently swallowed board undo.
 
 `PanelController` swaps the panel's `NSHostingView` between `RootView` and
 `MinimisedPill`, resizing about the corner the panel is parked in so collapsing
