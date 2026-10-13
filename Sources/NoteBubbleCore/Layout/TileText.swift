@@ -28,9 +28,4 @@ enum TileText {
         // can differ from AppKit's by a hair, and under-measuring truncates.
         return ceil(rect.height) + 1
     }
-
-    /// Whether a square tile of `size` can show `text` in full.
-    static func fits(_ text: String, inTileOf size: CGFloat) -> Bool {
-        height(of: text, boundedBy: size - horizontalInset * 2) <= size - verticalChrome
-    }
 }

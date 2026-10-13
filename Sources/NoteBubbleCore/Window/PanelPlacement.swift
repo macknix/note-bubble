@@ -16,7 +16,7 @@ struct PanelAnchor: Equatable, Codable {
     var horizontal: Horizontal
     var vertical: Vertical
 
-    /// Where the widget starts life, matching `defaultOrigin`.
+    /// Where the widget starts life — see `PanelParking.firstRun`.
     static let topRight = PanelAnchor(horizontal: .right, vertical: .top)
 
     /// The fixed point: the corner every resize is measured from.

@@ -147,8 +147,8 @@ final class MenuBarItem {
         return item
     }
 
-    /// Overdue is called out here because the badge above only counts the board
-    /// that is open — this is where the others get to say they are rotting.
+    /// The icon's badge is one total across every board; this is where it is
+    /// broken back down, so you can see which board is rotting.
     private func title(for workspace: Workspace) -> String {
         let overdue = workspace.overdueCount(at: store.now)
         return overdue > 0 ? "\(workspace.displayName) — \(overdue) overdue" : workspace.displayName

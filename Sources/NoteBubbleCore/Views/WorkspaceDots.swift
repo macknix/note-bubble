@@ -118,7 +118,7 @@ struct WorkspaceDots: View {
 }
 
 /// The dots' catchments, gathered as they lay themselves out. What to do with them
-/// is `WorkspaceDrop`'s business, in Support, where it can be tested.
+/// is `TileFlight`'s business, in Support, where it can be tested.
 struct WorkspaceDropTargets: PreferenceKey {
     static var defaultValue: [WorkspaceDropTarget] { [] }
 
