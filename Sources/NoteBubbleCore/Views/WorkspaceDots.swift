@@ -92,12 +92,7 @@ struct WorkspaceDots: View {
         guard let stage = workspace.worstStage(at: store.now) else {
             return .white.opacity(isCurrent ? 0.5 : 0.2)
         }
-        let days: Double = switch stage {
-        case .fresh: 0
-        case .aging: 4
-        case .overdue: 30
-        }
-        return Aging.color(forDays: days).opacity(isCurrent ? 1 : 0.45)
+        return AgingPalette.color(for: stage).opacity(isCurrent ? 1 : 0.45)
     }
 
     private func tooltip(for workspace: Workspace) -> String {

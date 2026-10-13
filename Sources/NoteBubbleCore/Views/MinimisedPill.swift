@@ -82,12 +82,12 @@ struct MinimisedPill: View {
 
     /// Rounded square rather than a circle, matching the tiles it stands in for.
     private var badge: some View {
-        let days: Double = overdue > 0 ? 99 : 0
+        let stage: Aging.Stage = overdue > 0 ? .overdue : .fresh
         return ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Aging.color(forDays: days), Aging.shadeColor(forDays: days)],
+                        colors: [AgingPalette.color(for: stage), AgingPalette.shadeColor(for: stage)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
