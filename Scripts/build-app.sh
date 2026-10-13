@@ -18,10 +18,32 @@ VERSION="${VERSION#v}"
 BUILD_NUMBER="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 git diff --quiet HEAD 2>/dev/null || COMMIT="$COMMIT-dirty"
+# Release builds are universal — arm64 and x86_64 — so one download runs on any
+# Mac that meets LSMinimumSystemVersion. `swift build --arch a --arch b` needs
+# Xcode's build system, which this project does without, so each slice is built
+# on its own and the two are joined with lipo. Debug builds stay native: twice
+# the compile time buys nothing on the machine you are sitting at.
+# UNIVERSAL=0 or 1 overrides either default.
+if [ "$CONFIG" = "release" ]; then UNIVERSAL="${UNIVERSAL:-1}"; else UNIVERSAL="${UNIVERSAL:-0}"; fi
+MIN_MACOS="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$ROOT/Resources/Info.plist")"
+
 # Only the app product: the test executable uses @testable, which needs the
 # debug-only -enable-testing and so cannot be part of a release build.
-swift build -c "$CONFIG" --product NoteBubble
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/NoteBubble"
+if [ "$UNIVERSAL" = "1" ]; then
+  SLICES=()
+  for ARCH in arm64 x86_64; do
+    swift build -c "$CONFIG" --product NoteBubble \
+      --triple "$ARCH-apple-macosx$MIN_MACOS" --scratch-path "$ROOT/.build/$ARCH"
+    SLICES+=("$(swift build -c "$CONFIG" --triple "$ARCH-apple-macosx$MIN_MACOS" \
+      --scratch-path "$ROOT/.build/$ARCH" --show-bin-path)/NoteBubble")
+  done
+  BIN="$ROOT/.build/universal/NoteBubble"
+  mkdir -p "$(dirname "$BIN")"
+  lipo -create -output "$BIN" "${SLICES[@]}"
+else
+  swift build -c "$CONFIG" --product NoteBubble
+  BIN="$(swift build -c "$CONFIG" --show-bin-path)/NoteBubble"
+fi
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -52,4 +74,4 @@ fi
 codesign --force --sign - "$APP" >/dev/null 2>&1 || \
   echo "warning: ad-hoc codesign failed; the app may still run"
 
-echo "Built: $APP ($VERSION, build $BUILD_NUMBER, $COMMIT)"
+echo "Built: $APP ($VERSION, build $BUILD_NUMBER, $COMMIT; $(lipo -archs "$APP/Contents/MacOS/NoteBubble"))"

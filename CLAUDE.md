@@ -15,7 +15,7 @@ separate boards you two-finger swipe between.
 ```bash
 swift build                      # compile check, all targets
 swift run NoteBubbleTests        # run the test suite
-./Scripts/build-app.sh           # release build + assemble build/Note Bubble.app
+./Scripts/build-app.sh           # release build (universal arm64 + x86_64) + assemble build/Note Bubble.app
 ./Scripts/build-app.sh debug     # same, debug configuration
 VERSION=v1.2.0 ./Scripts/build-app.sh  # stamp an explicit version (CI does this from the tag)
 open "build/Note Bubble.app"     # launch
@@ -116,7 +116,7 @@ top-right corner.
 
 ## Build Constraints
 
-**There is no Xcode on this machine — only Command Line Tools.** Three consequences
+**There is no Xcode on this machine — only Command Line Tools.** Four consequences
 that will bite if forgotten:
 
 1. `xcodebuild` does not work and there is no `.xcodeproj`. The app is a Swift
@@ -127,7 +127,12 @@ that will bite if forgotten:
    over a small assertion harness in `Sources/NoteBubbleTests/Harness.swift`, run
    with `swift run NoteBubbleTests` and exiting non-zero on failure. Do not
    convert it to a `.testTarget`; it will stop building.
-3. The test target uses `@testable`, which needs the debug-only `-enable-testing`,
+3. **Release builds are universal, built one slice at a time.** `swift build --arch
+   arm64 --arch x86_64` needs Xcode's build system, so `build-app.sh` builds each
+   architecture with `--triple <arch>-apple-macosx<LSMinimumSystemVersion>` into its
+   own scratch path (`.build/arm64`, `.build/x86_64`) and joins them with `lipo`.
+   Debug builds stay native; `UNIVERSAL=0|1` overrides either way.
+4. The test target uses `@testable`, which needs the debug-only `-enable-testing`,
    so `build-app.sh` passes `--product NoteBubble` to keep it out of release
    builds. Dropping that flag breaks `./Scripts/build-app.sh`.
 

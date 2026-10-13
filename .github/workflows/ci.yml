@@ -58,4 +58,6 @@ jobs:
           test -d "$APP/Contents/Resources/Sounds"
           plutil -lint "$APP/Contents/Info.plist"
           codesign --verify "$APP"
+          # A release download has to run on Intel Macs too.
+          lipo -archs "$APP/Contents/MacOS/NoteBubble" | tr ' ' '\n' | sort | paste -sd' ' - | grep -qx 'arm64 x86_64'
           echo "bundle OK"
