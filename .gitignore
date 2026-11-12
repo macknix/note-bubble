@@ -17,3 +17,6 @@ skills/
 
 # Release artefacts — rebuilt by Scripts/package.sh
 dist/
+
+# The landing page's sounds and icon — copied from Resources/ by Scripts/site.sh
+site/design/assets/

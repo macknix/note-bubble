@@ -3,7 +3,10 @@
 #
 #   dist/NoteBubble-<version>.dmg     drag-to-Applications disk image
 #   dist/NoteBubble-<version>.zip     the same app, zipped
-#   dist/SHA256SUMS.txt               checksums for both
+#   dist/NoteBubble.dmg               the same disk image under a name that never changes,
+#                                     so releases/latest/download/NoteBubble.dmg is
+#                                     always the newest — the website links to it
+#   dist/SHA256SUMS.txt               checksums for all three
 #
 # Needs nothing beyond the Command Line Tools. The version comes from git, exactly
 # as in build-app.sh — pass VERSION=v1.2.0 to name one explicitly (CI does).
@@ -32,7 +35,9 @@ ditto "$APP" "$STAGE/Note Bubble.app"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -quiet -volname "Note Bubble" -srcfolder "$STAGE" -ov -format UDZO "$DIST/$NAME.dmg"
 
-(cd "$DIST" && shasum -a 256 "$NAME.dmg" "$NAME.zip" > SHA256SUMS.txt)
+cp "$DIST/$NAME.dmg" "$DIST/NoteBubble.dmg"
+
+(cd "$DIST" && shasum -a 256 "$NAME.dmg" "$NAME.zip" NoteBubble.dmg > SHA256SUMS.txt)
 
 echo "Packaged $VERSION:"
 ls -lh "$DIST" | awk 'NR > 1 { print "  " $NF " (" $5 ")" }'

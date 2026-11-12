@@ -1,0 +1,36 @@
+name: Pages
+
+# Publishes the landing page, site/design, to https://macknix.github.io/note-bubble/
+# whenever it changes on main. Its download buttons point at
+# releases/latest/download/NoteBubble.dmg, so a release needs no site change.
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'Resources/Sounds/**', 'docs/images/app-icon.png', 'Scripts/site.sh', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy in the app's sounds and icon
+        run: ./Scripts/site.sh assets
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/design
+      - id: deploy
+        uses: actions/deploy-pages@v4
