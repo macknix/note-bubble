@@ -27,8 +27,8 @@ brew install --cask macknix/tap/note-bubble
 No GitHub account is needed. If an earlier attempt failed with *"could not read
 Username for 'https://github.com'"*, run `brew untap macknix/tap` and install again.
 
-Or download the latest **`NoteBubble-<version>.dmg`** from
-[Releases](https://github.com/macknix/note-bubble/releases/latest), open it, and
+Or [**download the latest `NoteBubble.dmg`**](https://github.com/macknix/note-bubble/releases/latest/download/NoteBubble.dmg) (every version is on
+[Releases](https://github.com/macknix/note-bubble/releases)), open it, and
 drag Note Bubble into Applications. One download runs on Apple silicon and Intel.
 
 **The first launch needs one extra step.** Note Bubble isn't notarised by Apple, so

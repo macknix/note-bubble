@@ -28,6 +28,8 @@ python3 Scripts/make-pop-sounds.py   # regenerate synthesised .wav pop fallbacks
 
 python3 Scripts/demo-data.py install # load the demo board (backs up your notes)
 python3 Scripts/demo-data.py restore # put your own notes back
+
+./Scripts/site.sh                    # landing page at http://localhost:8080/design/
 ```
 
 `Scripts/demo-data.py` is the standing test board: 37 notes over three workspaces —
@@ -75,6 +77,7 @@ touches layout, ageing or nesting — it covers the cases that have broken befor
 | Note data, undo | `Model/BubbleStore.swift` |
 | Reading and writing `bubbles.json`, backups | `Model/BubbleFile.swift` |
 | Asking before something destructive | `Views/ConfirmSheet.swift` |
+| The landing page (`site/design`, published to GitHub Pages) | `site/design/`; its sounds and icon are copied from `Resources/` by `Scripts/site.sh` |
 | App icon artwork | `Scripts/make-icon.swift` — keep its three bubbles in step with `MenuBarIcon` |
 
 ## Invariants worth knowing before editing
@@ -174,7 +177,7 @@ Sources/NoteBubbleCore/    everything real, so the tests can import it
                            PanelMover, SwipeMonitor, MenuBarIcon,
                            MenuBarItem, HotKey
 Sources/NoteBubbleTests/   executable test suite + Harness
-Scripts/                   build-app.sh, package.sh, render-cask.sh, make-icon.swift,
+Scripts/                   build-app.sh, package.sh, render-cask.sh, site.sh, make-icon.swift,
                            make-pop-sounds.py, demo-data.py
 Resources/                 Info.plist, AppIcon.icns, Sounds/
 Packaging/homebrew/        the Homebrew cask template, and how the tap is wired
